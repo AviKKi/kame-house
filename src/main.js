@@ -12,7 +12,7 @@ const CAMERA_PARAMS = {
   fov: 45,
   near: 0.1,
   far: 80,
-  position: [4.2, 2.8, 6.2],
+  position: [6.3, 4.2, 9.3],
   target: [0, 0, 0],
 };
 

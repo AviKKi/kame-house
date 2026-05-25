@@ -53,6 +53,7 @@ Implementation notes:
 - Constants live at the top of `src/main.js`.
 - The actual light is a `DirectionalLight`.
 - The visible sun is a small `MeshBasicMaterial` sphere at the same position.
+- Initial camera distance is set to the orbit controls' max zoom-out distance so the water opens centered with wider side whitespace.
 - Build check passed with `npm run build`.
 - Headless Chrome screenshot verified the sun is visible in frame.
 
