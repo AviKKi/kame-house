@@ -306,19 +306,44 @@ Implementation notes:
 - Build check passed with `npm run build`.
 - Visual check pending: confirm shallow→deep gradient is visible from the default orbit and that the floor is still readable through the deepest part of the disc.
 
-### 13. Add Screen-Space Refraction
+### 13. Add Screen-Space Refraction (Plain)
 
 Status: pending
 
-Goal: use a scene color render target and water normal offset to distort the floor through the water.
+Goal: use a scene color render target and water normal offset to distort the floor through the water. Single-sample refraction with no chromatic split.
 
 Acceptance:
 
+- A `WebGLRenderTarget` captures the scene-without-water each frame.
+- The water surface fragment shader samples the captured texture at `uv_screen + N_w.xy * s_distort` to refract the floor (and the baked-in caustic ribbons from Step 11) through wave normals.
 - Distortion follows wave normals.
-- Refraction amount is subtle.
-- Render order is explicit and documented.
+- Refraction amount is subtle (no "wet glass" over-warping).
+- Render order is explicit and documented: scene-without-water render pass first, then water surface.
+- `s_distort` strength is tweakable.
 
-### 14. Final Water Pass
+Notes:
+
+- This step covers plain refraction only; chromatic dispersion (prism) is split into the next step so it can be evaluated independently.
+
+### 14. Add Chromatic Dispersion To Refraction
+
+Status: pending
+
+Goal: layer a subtle prism/dispersion effect on top of Step 13 refraction by splitting the refraction sample into R/G/B with slightly different distortion offsets.
+
+Acceptance:
+
+- Refraction sampler does three reads (one per channel) with per-channel distortion offsets `s_distort * (1 + k_disp_r/g/b)`.
+- Dispersion amount is tweakable and starts subtle (defaults near zero so the output matches Step 13 until the slider is moved).
+- Effect is most visible on high-slope wave normals and around caustic edges in the refracted floor.
+- Caustic fringing comes for free via the refraction sample — no separate dispersion path inside the floor shader.
+- Setting the dispersion knob to 0 must produce the exact same output as Step 13.
+
+Notes:
+
+- Defer this step until plain refraction is in and tuned; if the look is already convincing without dispersion, this step can stay at default-zero or be skipped entirely.
+
+### 15. Final Water Pass
 
 Status: pending
 
