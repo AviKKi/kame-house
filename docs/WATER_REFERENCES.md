@@ -145,6 +145,43 @@ eta_flow(p, t) = A_L * fbm(p * f_L - v * t)
 v = c * d
 ```
 
+Current level 2 build variant:
+
+```text
+d = [cos(theta_wind), sin(theta_wind)]
+p_parallel = dot(p, d)
+p_cross = dot(p, [-d_y, d_x])
+k = 2 pi / wavelength
+phase = k * (p_parallel - speed * t)
+```
+
+Organic phase modulation:
+
+```text
+phaseNoise =
+  (fbm(
+    p_parallel / wavelength * 1.25 - speed * t * 0.22,
+    p_cross / wavelength * 0.72 + speed * t * 0.11
+  ) - 0.5)
+  * noiseStrength
+  * pi
+```
+
+Height:
+
+```text
+eta_2 =
+  amplitude *
+  (
+    sin(phase + phaseNoise)
+    + secondaryStrength * sin(1.72 * phase + 0.32 * k * p_cross + 0.65 * phaseNoise + 1.8)
+    + noiseStrength * low_frequency_fbm
+  )
+  / normalizer
+```
+
+This gives a larger wind-directed movement while keeping level 1 as the smaller, faster local disturbance.
+
 ## Final Water Height
 
 ```text

@@ -165,7 +165,7 @@ Implementation notes:
 
 ### 7. Add Level 2 Directional Large Waves
 
-Status: pending
+Status: done
 
 Goal: add larger directional vertex waves.
 
@@ -174,6 +174,18 @@ Acceptance:
 - Waves have visible broad movement.
 - Direction, speed, amplitude, wavelength, and wind vector are constants.
 - Motion does not look like random static shimmer.
+- Level 2 controls are exposed in the collapsible settings menu.
+- Level 1 remains a smaller, faster local disturbance over the larger wind-driven layer.
+
+Implementation notes:
+
+- Added level 2 as a separate height term combined with level 1 in `getSurfaceHeight`.
+- Level 2 uses layered directional sine waves moving along a wind direction.
+- Added a directional fBM phase/noise term so the broad waves are not perfectly mechanical.
+- Side-wall rim uses the combined level 1 plus level 2 height, so the water body stays connected.
+- Added menu controls for amplitude, wavelength, speed, direction, layering, and noise.
+- Build check passed with `npm run build`.
+- Screenshot check verified visible broad wave movement with the settings menu collapsed by default.
 
 ### 8. Blend Small And Large Wave Normals
 

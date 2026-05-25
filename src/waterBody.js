@@ -279,7 +279,11 @@ function updateSideGeometry(geometry, params, time) {
 }
 
 function getSurfaceHeight(x, z, { surfaceY, waves }, time) {
-  return surfaceY + getLevel1NoiseHeight(x, z, waves.level1, time);
+  return (
+    surfaceY +
+    getLevel2DirectionalHeight(x, z, waves.level2, time) +
+    getLevel1NoiseHeight(x, z, waves.level1, time)
+  );
 }
 
 function getLevel1NoiseHeight(x, z, level1, time) {
@@ -314,6 +318,63 @@ function getLevel1NoiseHeight(x, z, level1, time) {
   const value = THREE.MathUtils.lerp(sampleA, sampleB, blend);
 
   return (value - 0.5) * level1.amplitude;
+}
+
+function getLevel2DirectionalHeight(x, z, level2, time) {
+  if (!level2.enabled || level2.amplitude === 0) {
+    return 0;
+  }
+
+  const direction = angleToVector(level2.directionDegrees);
+  const perpendicular = {
+    x: -direction.z,
+    z: direction.x,
+  };
+  const along = x * direction.x + z * direction.z;
+  const across = x * perpendicular.x + z * perpendicular.z;
+  const waveNumber = (Math.PI * 2) / level2.wavelength;
+  const travel = level2.speed * time;
+  const basePhase = waveNumber * (along - travel);
+  const noiseScale = 1 / level2.wavelength;
+  const phaseNoise =
+    (fbm(
+      along * noiseScale * 1.25 - travel * 0.22,
+      across * noiseScale * 0.72 + travel * 0.11,
+      3,
+    ) -
+      0.5) *
+    level2.noiseStrength *
+    Math.PI;
+
+  const primary = Math.sin(basePhase + phaseNoise);
+  const secondary = Math.sin(
+    basePhase * 1.72 +
+      across * waveNumber * 0.32 +
+      phaseNoise * 0.65 +
+      1.8,
+  );
+  const longDrift =
+    fbm(
+      along * noiseScale * 0.42 - travel * 0.08,
+      across * noiseScale * 0.3,
+      2,
+    ) - 0.5;
+  const combined =
+    primary +
+    secondary * level2.secondaryStrength +
+    longDrift * level2.noiseStrength;
+  const normalizer =
+    1 + level2.secondaryStrength + level2.noiseStrength * 0.5;
+
+  return (combined / normalizer) * level2.amplitude;
+}
+
+function angleToVector(degrees) {
+  const radians = THREE.MathUtils.degToRad(degrees);
+  return {
+    x: Math.cos(radians),
+    z: Math.sin(radians),
+  };
 }
 
 function fbm(x, z, octaves) {

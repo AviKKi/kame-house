@@ -97,7 +97,13 @@ const WATER_PARAMS = {
       ...LEVEL_1_NOISE_PRESETS.ripple.values,
     },
     level2: {
-      enabled: false,
+      enabled: true,
+      amplitude: 0.16,
+      wavelength: 3.4,
+      speed: 0.62,
+      directionDegrees: -28,
+      secondaryStrength: 0.34,
+      noiseStrength: 0.22,
     },
   },
 };

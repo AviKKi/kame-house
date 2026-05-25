@@ -95,8 +95,60 @@ const SLOPE_SHADING_CONTROLS = [
   },
 ];
 
+const LEVEL_2_CONTROLS = [
+  {
+    key: 'amplitude',
+    label: 'Amplitude',
+    min: 0,
+    max: 0.35,
+    step: 0.005,
+    format: (value) => value.toFixed(3),
+  },
+  {
+    key: 'wavelength',
+    label: 'Length',
+    min: 1.2,
+    max: 7,
+    step: 0.1,
+    format: (value) => value.toFixed(1),
+  },
+  {
+    key: 'speed',
+    label: 'Speed',
+    min: 0,
+    max: 1.8,
+    step: 0.02,
+    format: (value) => value.toFixed(2),
+  },
+  {
+    key: 'directionDegrees',
+    label: 'Direction',
+    min: -180,
+    max: 180,
+    step: 1,
+    format: (value) => `${Math.round(value)} deg`,
+  },
+  {
+    key: 'secondaryStrength',
+    label: 'Layering',
+    min: 0,
+    max: 0.8,
+    step: 0.01,
+    format: (value) => value.toFixed(2),
+  },
+  {
+    key: 'noiseStrength',
+    label: 'Noise',
+    min: 0,
+    max: 0.7,
+    step: 0.01,
+    format: (value) => value.toFixed(2),
+  },
+];
+
 export function createWaterTuningMenu({ params, presets, initialPreset }) {
   const level1 = params.waves.level1;
+  const level2 = params.waves.level2;
   const reflection = params.sunReflection;
   const slopeShading = params.slopeShading;
   const panel = document.createElement('section');
@@ -116,6 +168,10 @@ export function createWaterTuningMenu({ params, presets, initialPreset }) {
     <div class="preset-row" aria-label="Level 1 noise presets"></div>
     <div class="control-list" data-control-group="level1"></div>
     <div class="tuning-header tuning-header-secondary">
+      <h1>Level 2 Waves</h1>
+    </div>
+    <div class="control-list" data-control-group="level2"></div>
+    <div class="tuning-header tuning-header-secondary">
       <h1>Sun Reflection</h1>
     </div>
     <div class="control-list" data-control-group="reflection"></div>
@@ -134,6 +190,7 @@ export function createWaterTuningMenu({ params, presets, initialPreset }) {
   const closeButton = panel.querySelector('.tuning-close-button');
   const presetRow = panel.querySelector('.preset-row');
   const level1ControlList = panel.querySelector('[data-control-group="level1"]');
+  const level2ControlList = panel.querySelector('[data-control-group="level2"]');
   const reflectionControlList = panel.querySelector(
     '[data-control-group="reflection"]',
   );
@@ -178,6 +235,29 @@ export function createWaterTuningMenu({ params, presets, initialPreset }) {
     inputByKey.set(control.key, input);
     valueByKey.set(control.key, value);
     level1ControlList.append(row);
+  });
+
+  LEVEL_2_CONTROLS.forEach((control) => {
+    const row = document.createElement('label');
+    const value = document.createElement('span');
+    const input = document.createElement('input');
+
+    row.className = 'control-row';
+    input.type = 'range';
+    input.min = control.min;
+    input.max = control.max;
+    input.step = control.step;
+    input.value = level2[control.key];
+    value.textContent = control.format(level2[control.key]);
+
+    input.addEventListener('input', () => {
+      const nextValue = Number(input.value);
+      level2[control.key] = nextValue;
+      value.textContent = control.format(nextValue);
+    });
+
+    row.append(control.label, input, value);
+    level2ControlList.append(row);
   });
 
   REFLECTION_CONTROLS.forEach((control) => {
