@@ -218,6 +218,13 @@ Final highlight:
 C_specular = C_sun * S_sun * specularStrength
 ```
 
+Current implementation uses a capped blend to avoid a pure white patch:
+
+```text
+S = clamp(S_sun * specularStrength, 0, S_max)
+C = mix(C_water, C_sun, S)
+```
+
 Use a controlled highlight:
 
 ```text
@@ -227,6 +234,24 @@ C_sun = pale warm white, not pure white
 ```
 
 The important requirement is that level 1 normals break up the reflected highlight. If the highlight remains smooth, improve normal calculation before moving to level 2 waves.
+
+Directional slope shading is a stylized readability layer. It makes ripple normals visible even when the specular glint is not at the perfect camera angle.
+
+```text
+D = normalize(L.xz)
+slope = dot(N.xz * normalBoost, D)
+lightSide = max(0, slope)
+darkSide = max(0, -slope)
+```
+
+Then:
+
+```text
+C = mix(C, C_lightSide, lightSide * lightStrength)
+C = mix(C, C_darkSide, darkSide * shadowStrength)
+```
+
+This is not physically pure diffuse water shading; it is a practical visual aid for reading small displacement before the full reflection/refraction stack exists.
 
 ## Depth-Based Transparency And Color
 

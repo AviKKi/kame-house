@@ -41,24 +41,103 @@ const LEVEL_1_CONTROLS = [
   },
 ];
 
+const REFLECTION_CONTROLS = [
+  {
+    key: 'strength',
+    label: 'Strength',
+    min: 0,
+    max: 1.6,
+    step: 0.01,
+    format: (value) => value.toFixed(2),
+  },
+  {
+    key: 'shininess',
+    label: 'Shininess',
+    min: 24,
+    max: 220,
+    step: 1,
+    format: (value) => String(Math.round(value)),
+  },
+  {
+    key: 'spread',
+    label: 'Spread',
+    min: 0.08,
+    max: 0.65,
+    step: 0.01,
+    format: (value) => value.toFixed(2),
+  },
+];
+
+const SLOPE_SHADING_CONTROLS = [
+  {
+    key: 'lightStrength',
+    label: 'Light Side',
+    min: 0,
+    max: 1,
+    step: 0.01,
+    format: (value) => value.toFixed(2),
+  },
+  {
+    key: 'shadowStrength',
+    label: 'Dark Side',
+    min: 0,
+    max: 1,
+    step: 0.01,
+    format: (value) => value.toFixed(2),
+  },
+  {
+    key: 'normalBoost',
+    label: 'Slope Boost',
+    min: 1,
+    max: 18,
+    step: 0.1,
+    format: (value) => value.toFixed(1),
+  },
+];
+
 export function createWaterTuningMenu({ params, presets, initialPreset }) {
   const level1 = params.waves.level1;
+  const reflection = params.sunReflection;
+  const slopeShading = params.slopeShading;
   const panel = document.createElement('section');
+  const toggleButton = document.createElement('button');
   const presetButtons = new Map();
   const inputByKey = new Map();
   const valueByKey = new Map();
 
   panel.className = 'tuning-panel';
+  panel.id = 'water-tuning-panel';
+  panel.hidden = true;
   panel.innerHTML = `
     <div class="tuning-header">
       <h1>Level 1 Noise</h1>
+      <button class="tuning-close-button" type="button" aria-label="Close water settings">Close</button>
     </div>
     <div class="preset-row" aria-label="Level 1 noise presets"></div>
-    <div class="control-list"></div>
+    <div class="control-list" data-control-group="level1"></div>
+    <div class="tuning-header tuning-header-secondary">
+      <h1>Sun Reflection</h1>
+    </div>
+    <div class="control-list" data-control-group="reflection"></div>
+    <div class="tuning-header tuning-header-secondary">
+      <h1>Slope Shading</h1>
+    </div>
+    <div class="control-list" data-control-group="slope"></div>
   `;
 
+  toggleButton.className = 'tuning-fab';
+  toggleButton.type = 'button';
+  toggleButton.textContent = 'Settings';
+  toggleButton.setAttribute('aria-controls', panel.id);
+  toggleButton.setAttribute('aria-expanded', 'false');
+
+  const closeButton = panel.querySelector('.tuning-close-button');
   const presetRow = panel.querySelector('.preset-row');
-  const controlList = panel.querySelector('.control-list');
+  const level1ControlList = panel.querySelector('[data-control-group="level1"]');
+  const reflectionControlList = panel.querySelector(
+    '[data-control-group="reflection"]',
+  );
+  const slopeControlList = panel.querySelector('[data-control-group="slope"]');
 
   Object.entries(presets).forEach(([key, preset]) => {
     const button = document.createElement('button');
@@ -98,11 +177,68 @@ export function createWaterTuningMenu({ params, presets, initialPreset }) {
     row.append(control.label, input, value);
     inputByKey.set(control.key, input);
     valueByKey.set(control.key, value);
-    controlList.append(row);
+    level1ControlList.append(row);
   });
 
-  document.body.append(panel);
+  REFLECTION_CONTROLS.forEach((control) => {
+    const row = document.createElement('label');
+    const value = document.createElement('span');
+    const input = document.createElement('input');
+
+    row.className = 'control-row';
+    input.type = 'range';
+    input.min = control.min;
+    input.max = control.max;
+    input.step = control.step;
+    input.value = reflection[control.key];
+    value.textContent = control.format(reflection[control.key]);
+
+    input.addEventListener('input', () => {
+      const nextValue =
+        control.key === 'shininess'
+          ? Math.round(Number(input.value))
+          : Number(input.value);
+      reflection[control.key] = nextValue;
+      value.textContent = control.format(nextValue);
+    });
+
+    row.append(control.label, input, value);
+    reflectionControlList.append(row);
+  });
+
+  SLOPE_SHADING_CONTROLS.forEach((control) => {
+    const row = document.createElement('label');
+    const value = document.createElement('span');
+    const input = document.createElement('input');
+
+    row.className = 'control-row';
+    input.type = 'range';
+    input.min = control.min;
+    input.max = control.max;
+    input.step = control.step;
+    input.value = slopeShading[control.key];
+    value.textContent = control.format(slopeShading[control.key]);
+
+    input.addEventListener('input', () => {
+      const nextValue = Number(input.value);
+      slopeShading[control.key] = nextValue;
+      value.textContent = control.format(nextValue);
+    });
+
+    row.append(control.label, input, value);
+    slopeControlList.append(row);
+  });
+
+  document.body.append(toggleButton, panel);
   applyPreset(initialPreset);
+
+  toggleButton.addEventListener('click', () => {
+    setExpanded(panel.hidden);
+  });
+
+  closeButton.addEventListener('click', () => {
+    setExpanded(false);
+  });
 
   function applyPreset(key) {
     const preset = presets[key];
@@ -126,5 +262,11 @@ export function createWaterTuningMenu({ params, presets, initialPreset }) {
     presetButtons.forEach((button, key) => {
       button.classList.toggle('is-active', key === activeKey);
     });
+  }
+
+  function setExpanded(isExpanded) {
+    panel.hidden = !isExpanded;
+    toggleButton.hidden = isExpanded;
+    toggleButton.setAttribute('aria-expanded', String(isExpanded));
   }
 }

@@ -18,6 +18,16 @@ const WATER_SURFACE_FRAGMENT_SHADER = `
   uniform float uAlpha;
   uniform float uFresnelStrength;
   uniform float uFresnelPower;
+  uniform vec3 uSunPosition;
+  uniform vec3 uSunReflectionColor;
+  uniform float uSunReflectionStrength;
+  uniform float uSunReflectionShininess;
+  uniform float uSunReflectionSpread;
+  uniform vec3 uSlopeLightColor;
+  uniform vec3 uSlopeShadowColor;
+  uniform float uSlopeLightStrength;
+  uniform float uSlopeShadowStrength;
+  uniform float uSlopeNormalBoost;
 
   varying vec3 vWorldPosition;
   varying vec3 vWorldNormal;
@@ -29,6 +39,25 @@ const WATER_SURFACE_FRAGMENT_SHADER = `
     float fresnel = pow(1.0 - facing, uFresnelPower) * uFresnelStrength;
 
     vec3 color = mix(uBaseColor, uReflectionColor, fresnel);
+    vec3 lightDirection = normalize(uSunPosition - vWorldPosition);
+    vec2 lightPlanar = normalize(lightDirection.xz);
+    float slope = dot(normal.xz * uSlopeNormalBoost, lightPlanar);
+    float litSlope = clamp(max(0.0, slope), 0.0, 1.0);
+    float shadowSlope = clamp(max(0.0, -slope), 0.0, 1.0);
+    color = mix(color, uSlopeLightColor, litSlope * uSlopeLightStrength);
+    color = mix(color, uSlopeShadowColor, shadowSlope * uSlopeShadowStrength);
+
+    vec3 reflectedLight = reflect(-lightDirection, normal);
+    float alignment = max(0.0, dot(reflectedLight, viewDirection));
+    float tightGlint = pow(alignment, uSunReflectionShininess);
+    float broadGlint = pow(
+      alignment,
+      max(1.0, uSunReflectionShininess * uSunReflectionSpread)
+    );
+    float sunGlint = (tightGlint + broadGlint * 0.28) * uSunReflectionStrength;
+    sunGlint = clamp(sunGlint, 0.0, 0.82);
+    color = mix(color, uSunReflectionColor, sunGlint);
+
     float alpha = clamp(uAlpha + fresnel * 0.24, 0.0, 1.0);
 
     gl_FragColor = vec4(color, alpha);
@@ -39,11 +68,9 @@ export function createWaterBody(params) {
   const group = new THREE.Group();
   const surfaceGeometry = createWaterSurfaceGeometry(params);
   const sideGeometry = createWaterSideGeometry(params);
+  const surfaceMaterial = createWaterSurfaceMaterial(params);
 
-  const surface = new THREE.Mesh(
-    surfaceGeometry,
-    createWaterSurfaceMaterial(params),
-  );
+  const surface = new THREE.Mesh(surfaceGeometry, surfaceMaterial);
   surface.renderOrder = 2;
 
   const side = new THREE.Mesh(sideGeometry, createWaterSideMaterial(params));
@@ -54,6 +81,7 @@ export function createWaterBody(params) {
     params,
     surfaceGeometry,
     sideGeometry,
+    surfaceMaterial,
   };
 
   updateWaterBody(group, 0);
@@ -62,9 +90,11 @@ export function createWaterBody(params) {
 }
 
 export function updateWaterBody(group, time) {
-  const { params, surfaceGeometry, sideGeometry } = group.userData.water;
+  const { params, surfaceGeometry, sideGeometry, surfaceMaterial } =
+    group.userData.water;
   updateSurfaceGeometry(surfaceGeometry, params, time);
   updateSideGeometry(sideGeometry, params, time);
+  updateWaterMaterial(surfaceMaterial, params);
 }
 
 function createWaterSurfaceGeometry({
@@ -170,6 +200,8 @@ function createWaterSurfaceMaterial({
   surfaceAlpha,
   fresnelStrength,
   fresnelPower,
+  sunReflection,
+  slopeShading,
 }) {
   return new THREE.ShaderMaterial({
     vertexShader: WATER_SURFACE_VERTEX_SHADER,
@@ -180,6 +212,18 @@ function createWaterSurfaceMaterial({
       uAlpha: { value: surfaceAlpha },
       uFresnelStrength: { value: fresnelStrength },
       uFresnelPower: { value: fresnelPower },
+      uSunPosition: { value: new THREE.Vector3(...sunReflection.position) },
+      uSunReflectionColor: {
+        value: new THREE.Color(sunReflection.color),
+      },
+      uSunReflectionStrength: { value: sunReflection.strength },
+      uSunReflectionShininess: { value: sunReflection.shininess },
+      uSunReflectionSpread: { value: sunReflection.spread },
+      uSlopeLightColor: { value: new THREE.Color(slopeShading.lightColor) },
+      uSlopeShadowColor: { value: new THREE.Color(slopeShading.shadowColor) },
+      uSlopeLightStrength: { value: slopeShading.lightStrength },
+      uSlopeShadowStrength: { value: slopeShading.shadowStrength },
+      uSlopeNormalBoost: { value: slopeShading.normalBoost },
     },
     transparent: true,
     depthWrite: false,
@@ -195,6 +239,15 @@ function createWaterSideMaterial({ sideColor, sideAlpha }) {
     depthWrite: false,
     side: THREE.DoubleSide,
   });
+}
+
+function updateWaterMaterial(material, { sunReflection, slopeShading }) {
+  material.uniforms.uSunReflectionStrength.value = sunReflection.strength;
+  material.uniforms.uSunReflectionShininess.value = sunReflection.shininess;
+  material.uniforms.uSunReflectionSpread.value = sunReflection.spread;
+  material.uniforms.uSlopeLightStrength.value = slopeShading.lightStrength;
+  material.uniforms.uSlopeShadowStrength.value = slopeShading.shadowStrength;
+  material.uniforms.uSlopeNormalBoost.value = slopeShading.normalBoost;
 }
 
 function updateSurfaceGeometry(geometry, params, time) {

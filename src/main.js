@@ -77,6 +77,20 @@ const WATER_PARAMS = {
   sideAlpha: 0.44,
   fresnelStrength: 0.82,
   fresnelPower: 4.8,
+  sunReflection: {
+    position: SUN_PARAMS.position,
+    color: 0xfff4c8,
+    strength: 0.72,
+    shininess: 96,
+    spread: 0.28,
+  },
+  slopeShading: {
+    lightColor: 0xcafcff,
+    shadowColor: 0x2297a8,
+    lightStrength: 0.42,
+    shadowStrength: 0.46,
+    normalBoost: 9.5,
+  },
   waves: {
     level1: {
       enabled: true,

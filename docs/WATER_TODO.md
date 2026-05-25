@@ -137,7 +137,7 @@ Implementation notes:
 
 ### 6. Add Sun Surface Reflection
 
-Status: pending
+Status: done
 
 Goal: make level 1 ripples visible from the default camera by reflecting the sun/source light on the water surface.
 
@@ -146,13 +146,22 @@ Acceptance:
 - A bright but controlled sun glint appears on the water surface.
 - Level 1 ripple normals break up the highlight enough to reveal small disturbances.
 - Highlight color, strength, shininess, and spread are tweakable constants.
+- Sun-facing ripple slopes get a light tint while opposing slopes get a darker aqua shade.
+- Slope light, slope shadow, and slope boost are tunable from the same menu.
 - The effect uses the existing sun direction; do not add extra lights or decorative reflection meshes.
 - The water should still read as transparent aqua, not a metallic mirror.
 
 Implementation notes:
 
 - Add this before large directional waves because the current material makes ripples hard to evaluate from the default viewing angle.
-- Use the current dynamic surface normals first; improve finite-difference normals in Step 8 if needed.
+- Used the current dynamic surface normals first; improve finite-difference normals in Step 8 if needed.
+- Added shader uniforms for sun position, highlight color, strength, shininess, and spread.
+- The tuning menu now exposes strength, shininess, and spread.
+- The shader clamps the glint and blends toward a warm sun color instead of adding unbounded white.
+- Added directional slope shading because specular alone was too view-angle dependent.
+- The tuning menu now exposes Light Side, Dark Side, and Slope Boost controls.
+- Build check passed with `npm run build`.
+- Screenshot check verified the sun reflection, ripple breakup, and light/dark slope contrast from the default camera.
 
 ### 7. Add Level 2 Directional Large Waves
 
