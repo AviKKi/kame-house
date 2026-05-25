@@ -95,6 +95,33 @@ const SLOPE_SHADING_CONTROLS = [
   },
 ];
 
+const NORMAL_CONTROLS = [
+  {
+    key: 'level1Strength',
+    label: 'Ripple Normal',
+    min: 0,
+    max: 1.8,
+    step: 0.01,
+    format: (value) => value.toFixed(2),
+  },
+  {
+    key: 'sampleStep',
+    label: 'Sample Step',
+    min: 0.02,
+    max: 0.12,
+    step: 0.005,
+    format: (value) => value.toFixed(3),
+  },
+  {
+    key: 'maxSlope',
+    label: 'Slope Limit',
+    min: 0.3,
+    max: 2.2,
+    step: 0.05,
+    format: (value) => value.toFixed(2),
+  },
+];
+
 const LEVEL_2_CONTROLS = [
   {
     key: 'amplitude',
@@ -159,6 +186,7 @@ export function createWaterTuningMenu({ params, presets, initialPreset }) {
   const level2 = params.waves.level2;
   const reflection = params.sunReflection;
   const slopeShading = params.slopeShading;
+  const normalBlending = params.normalBlending;
   const panel = document.createElement('section');
   const toggleButton = document.createElement('button');
   const presetButtons = new Map();
@@ -187,6 +215,10 @@ export function createWaterTuningMenu({ params, presets, initialPreset }) {
       <h1>Slope Shading</h1>
     </div>
     <div class="control-list" data-control-group="slope"></div>
+    <div class="tuning-header tuning-header-secondary">
+      <h1>Wave Normals</h1>
+    </div>
+    <div class="control-list" data-control-group="normals"></div>
   `;
 
   toggleButton.className = 'tuning-fab';
@@ -203,6 +235,9 @@ export function createWaterTuningMenu({ params, presets, initialPreset }) {
     '[data-control-group="reflection"]',
   );
   const slopeControlList = panel.querySelector('[data-control-group="slope"]');
+  const normalControlList = panel.querySelector(
+    '[data-control-group="normals"]',
+  );
 
   Object.entries(presets).forEach(([key, preset]) => {
     const button = document.createElement('button');
@@ -315,6 +350,29 @@ export function createWaterTuningMenu({ params, presets, initialPreset }) {
 
     row.append(control.label, input, value);
     slopeControlList.append(row);
+  });
+
+  NORMAL_CONTROLS.forEach((control) => {
+    const row = document.createElement('label');
+    const value = document.createElement('span');
+    const input = document.createElement('input');
+
+    row.className = 'control-row';
+    input.type = 'range';
+    input.min = control.min;
+    input.max = control.max;
+    input.step = control.step;
+    input.value = normalBlending[control.key];
+    value.textContent = control.format(normalBlending[control.key]);
+
+    input.addEventListener('input', () => {
+      const nextValue = Number(input.value);
+      normalBlending[control.key] = nextValue;
+      value.textContent = control.format(nextValue);
+    });
+
+    row.append(control.label, input, value);
+    normalControlList.append(row);
   });
 
   document.body.append(toggleButton, panel);

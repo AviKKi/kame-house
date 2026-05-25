@@ -309,6 +309,38 @@ partial h / partial x ~= (h(x + epsilon, z) - h(x - epsilon, z)) / (2 * epsilon)
 partial h / partial z ~= (h(x, z + epsilon) - h(x, z - epsilon)) / (2 * epsilon)
 ```
 
+Current normal split:
+
+```text
+P_geometry(p, t) =
+  p + level2_gerstner_displacement(p, t)
+```
+
+```text
+N_large = mesh normal from P_geometry
+```
+
+Level 1 stays out of geometry and only affects the lighting normal:
+
+```text
+g_1 =
+  [
+    partial eta_1 / partial x,
+    partial eta_1 / partial z
+  ]
+```
+
+```text
+N_final =
+  normalize([
+    N_large.x - clamp(g_1.x, -slopeLimit, slopeLimit) * rippleNormalStrength,
+    N_large.y,
+    N_large.z - clamp(g_1.z, -slopeLimit, slopeLimit) * rippleNormalStrength
+  ])
+```
+
+This keeps broad swell in the silhouette while letting level 1 break up sun glints and slope shading.
+
 ## Fresnel
 
 ```text

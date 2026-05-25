@@ -216,7 +216,7 @@ Implementation notes:
 
 ### 9. Blend Small And Large Wave Normals
 
-Status: pending
+Status: done
 
 Goal: make lighting respond to both ripple layers without making the geometry noisy.
 
@@ -225,6 +225,15 @@ Acceptance:
 - Large waves shape the surface.
 - Small waves affect highlights.
 - Normals do not create broken/dark artifacts.
+
+Implementation notes:
+
+- Level 2 Gerstner swell remains the actual vertex displacement for the top surface and side-wall rim.
+- Level 1 is no longer added to vertex height; it now contributes through a finite-difference normal perturbation pass.
+- The normal pass starts from the large-wave mesh normals, samples level 1 height around each base vertex, clamps the resulting slope, and renormalizes the blended normal.
+- Added Wave Normals controls for Ripple Normal, Sample Step, and Slope Limit.
+- Build check passed with `npm run build`.
+- Headless browser screenshot verified the scene renders, the sun remains visible, and the settings menu is still collapsed by default.
 
 ### 10. Add Edge Fade And Disc Mask
 

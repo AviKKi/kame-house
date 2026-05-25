@@ -91,6 +91,11 @@ const WATER_PARAMS = {
     shadowStrength: 0.46,
     normalBoost: 9.5,
   },
+  normalBlending: {
+    level1Strength: 0.74,
+    sampleStep: 0.055,
+    maxSlope: 1.15,
+  },
   waves: {
     level1: {
       enabled: true,

@@ -342,7 +342,7 @@ function updateSurfaceGeometry(geometry, params, time) {
 
   position.needsUpdate = true;
   geometry.computeVertexNormals();
-  geometry.getAttribute('normal').needsUpdate = true;
+  blendLevel1SurfaceNormals(geometry, params, time);
 }
 
 function updateSideGeometry(geometry, params, time) {
@@ -376,11 +376,73 @@ function getSurfacePoint(x, z, params, time) {
 
   return {
     x: x + level2Displacement.x,
-    y:
-      params.surfaceY +
-      level2Displacement.y +
-      getLevel1NoiseHeight(x, z, params.waves.level1, time),
+    y: params.surfaceY + level2Displacement.y,
     z: z + level2Displacement.z,
+  };
+}
+
+function blendLevel1SurfaceNormals(geometry, params, time) {
+  const { normalBlending, waves } = params;
+
+  if (
+    !normalBlending ||
+    !waves.level1.enabled ||
+    waves.level1.amplitude === 0 ||
+    normalBlending.level1Strength === 0
+  ) {
+    geometry.getAttribute('normal').needsUpdate = true;
+    return;
+  }
+
+  const basePositions = geometry.userData.basePositions;
+  const normal = geometry.getAttribute('normal');
+  const sampleStep = Math.max(0.005, normalBlending.sampleStep ?? 0.055);
+  const strength = normalBlending.level1Strength ?? 0.74;
+  const maxSlope = normalBlending.maxSlope ?? 1.15;
+
+  for (let index = 0; index < geometry.userData.vertexCount; index += 1) {
+    const baseIndex = index * 3;
+    const x = basePositions[baseIndex];
+    const z = basePositions[baseIndex + 2];
+    const gradient = getLevel1Gradient(x, z, waves.level1, time, sampleStep);
+    const slopeX = THREE.MathUtils.clamp(
+      gradient.x,
+      -maxSlope,
+      maxSlope,
+    );
+    const slopeZ = THREE.MathUtils.clamp(
+      gradient.z,
+      -maxSlope,
+      maxSlope,
+    );
+    const nextX = normal.getX(index) - slopeX * strength;
+    const nextY = normal.getY(index);
+    const nextZ = normal.getZ(index) - slopeZ * strength;
+    const normalLength = Math.hypot(nextX, nextY, nextZ) || 1;
+
+    normal.setXYZ(
+      index,
+      nextX / normalLength,
+      nextY / normalLength,
+      nextZ / normalLength,
+    );
+  }
+
+  normal.needsUpdate = true;
+}
+
+function getLevel1Gradient(x, z, level1, time, sampleStep) {
+  const halfSpan = sampleStep * 2;
+  const heightX =
+    getLevel1NoiseHeight(x + sampleStep, z, level1, time) -
+    getLevel1NoiseHeight(x - sampleStep, z, level1, time);
+  const heightZ =
+    getLevel1NoiseHeight(x, z + sampleStep, level1, time) -
+    getLevel1NoiseHeight(x, z - sampleStep, level1, time);
+
+  return {
+    x: heightX / halfSpan,
+    z: heightZ / halfSpan,
   };
 }
 
