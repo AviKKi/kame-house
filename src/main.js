@@ -73,7 +73,6 @@ const WATER_PARAMS = {
   angularSegments: 192,
   baseColor: 0x50d4df,
   reflectionColor: 0xe1fbff,
-  sideColor: 0x36b8c7,
   surfaceAlpha: 0.5,
   sideAlpha: 0.44,
   fresnelStrength: 0.82,
@@ -96,6 +95,10 @@ const WATER_PARAMS = {
     level1Strength: 0.74,
     sampleStep: 0.055,
     maxSlope: 1.15,
+  },
+  depthTint: {
+    deepColor: 0x1a6577,
+    attenuation: 1.4,
   },
   waves: {
     level1: {

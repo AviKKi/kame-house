@@ -284,7 +284,7 @@ Implementation notes:
 
 ### 12. Add Depth-Based Water Color
 
-Status: pending
+Status: done
 
 Goal: tint water from shallow aqua to deeper aqua using floor depth.
 
@@ -293,6 +293,18 @@ Acceptance:
 - Floor remains visible.
 - Depth tint does not make the whole disc opaque.
 - Attenuation strength is tweakable.
+
+Implementation notes:
+
+- Added depth-based tint to the water surface fragment shader in `src/waterBody.js`.
+- The shader now mixes between `uShallowColor` (existing `baseColor`) and `uDeepColor` using `transmission = exp(-uDepthAttenuation * pathLength)`, where `pathLength = (vWorldPosition.y - uFloorY) / max(0.05, viewDirection.y)`.
+- `pathLength` divides by the downward view-direction component so glancing camera angles read as a longer water column and pick up more of the deep color, while top-down views stay closer to the shallow tone.
+- Alpha is unchanged, so the floor (and its caustics) remain visible everywhere; the tint only shifts hue/value, not opacity.
+- Side wall material is unchanged for now since its existing `sideColor` already reads as a darker aqua and matches the new deep tone reasonably.
+- Tuneable constant `WATER_PARAMS.depthTint`: `deepColor` (0x1a6577 starter) and `attenuation` (1.4 starter).
+- Added a Depth Tint section to the water tuning menu with an `attenuation` slider (0–5).
+- Build check passed with `npm run build`.
+- Visual check pending: confirm shallow→deep gradient is visible from the default orbit and that the floor is still readable through the deepest part of the disc.
 
 ### 13. Add Screen-Space Refraction
 

@@ -82,8 +82,38 @@ const WATER_SURFACE_VERTEX_SHADER = `
   }
 `;
 
+const WATER_SIDE_VERTEX_SHADER = `
+  varying vec3 vWorldPosition;
+
+  void main() {
+    vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+    vWorldPosition = worldPosition.xyz;
+    gl_Position = projectionMatrix * viewMatrix * worldPosition;
+  }
+`;
+
+const WATER_SIDE_FRAGMENT_SHADER = `
+  uniform vec3 uShallowColor;
+  uniform vec3 uDeepColor;
+  uniform float uDepthAttenuation;
+  uniform float uSurfaceY;
+  uniform float uAlpha;
+
+  varying vec3 vWorldPosition;
+
+  void main() {
+    float depth = max(0.0, uSurfaceY - vWorldPosition.y);
+    float transmission = exp(-uDepthAttenuation * depth);
+    vec3 color = mix(uDeepColor, uShallowColor, transmission);
+    gl_FragColor = vec4(color, uAlpha);
+  }
+`;
+
 const WATER_SURFACE_FRAGMENT_SHADER = `
-  uniform vec3 uBaseColor;
+  uniform vec3 uShallowColor;
+  uniform vec3 uDeepColor;
+  uniform float uDepthAttenuation;
+  uniform float uFloorY;
   uniform vec3 uReflectionColor;
   uniform float uAlpha;
   uniform float uFresnelStrength;
@@ -105,10 +135,17 @@ const WATER_SURFACE_FRAGMENT_SHADER = `
   void main() {
     vec3 normal = normalize(vWorldNormal);
     vec3 viewDirection = normalize(cameraPosition - vWorldPosition);
+
+    float depth = max(0.0, vWorldPosition.y - uFloorY);
+    float cosView = max(0.05, viewDirection.y);
+    float pathLength = depth / cosView;
+    float transmission = exp(-uDepthAttenuation * pathLength);
+    vec3 baseColor = mix(uDeepColor, uShallowColor, transmission);
+
     float facing = max(0.0, dot(normal, viewDirection));
     float fresnel = pow(1.0 - facing, uFresnelPower) * uFresnelStrength;
 
-    vec3 color = mix(uBaseColor, uReflectionColor, fresnel);
+    vec3 color = mix(baseColor, uReflectionColor, fresnel);
     vec3 lightDirection = normalize(uSunPosition - vWorldPosition);
     vec2 lightPlanar = normalize(lightDirection.xz);
     float slope = dot(normal.xz * uSlopeNormalBoost, lightPlanar);
@@ -139,12 +176,13 @@ export function createWaterBody(params) {
   const surfaceGeometry = createWaterSurfaceGeometry(params);
   const sideGeometry = createWaterSideGeometry(params);
   const surfaceMaterial = createWaterSurfaceMaterial(params);
+  const sideMaterial = createWaterSideMaterial(params);
 
   const surface = new THREE.Mesh(surfaceGeometry, surfaceMaterial);
   surface.renderOrder = 2;
   surface.frustumCulled = false;
 
-  const side = new THREE.Mesh(sideGeometry, createWaterSideMaterial(params));
+  const side = new THREE.Mesh(sideGeometry, sideMaterial);
   side.renderOrder = 1;
   side.frustumCulled = false;
 
@@ -154,6 +192,7 @@ export function createWaterBody(params) {
     surfaceGeometry,
     sideGeometry,
     surfaceMaterial,
+    sideMaterial,
   };
 
   updateWaterBody(group, 0);
@@ -162,11 +201,17 @@ export function createWaterBody(params) {
 }
 
 export function updateWaterBody(group, time) {
-  const { params, surfaceGeometry, sideGeometry, surfaceMaterial } =
-    group.userData.water;
+  const {
+    params,
+    surfaceGeometry,
+    sideGeometry,
+    surfaceMaterial,
+    sideMaterial,
+  } = group.userData.water;
   updateSurfaceGeometry(surfaceGeometry, params, time);
   updateSideGeometry(sideGeometry, params, time);
   updateWaterMaterial(surfaceMaterial, params);
+  updateSideMaterial(sideMaterial, params);
 }
 
 function createWaterSurfaceGeometry({
@@ -276,12 +321,19 @@ function createWaterSurfaceMaterial({
   fresnelPower,
   sunReflection,
   slopeShading,
+  depthTint,
+  surfaceY,
+  depth,
 }) {
+  const floorY = surfaceY - depth;
   return new THREE.ShaderMaterial({
     vertexShader: WATER_SURFACE_VERTEX_SHADER,
     fragmentShader: WATER_SURFACE_FRAGMENT_SHADER,
     uniforms: {
-      uBaseColor: { value: new THREE.Color(baseColor) },
+      uShallowColor: { value: new THREE.Color(baseColor) },
+      uDeepColor: { value: new THREE.Color(depthTint.deepColor) },
+      uDepthAttenuation: { value: depthTint.attenuation },
+      uFloorY: { value: floorY },
       uReflectionColor: { value: new THREE.Color(reflectionColor) },
       uAlpha: { value: surfaceAlpha },
       uFresnelStrength: { value: fresnelStrength },
@@ -305,23 +357,43 @@ function createWaterSurfaceMaterial({
   });
 }
 
-function createWaterSideMaterial({ sideColor, sideAlpha }) {
-  return new THREE.MeshBasicMaterial({
-    color: sideColor,
+function createWaterSideMaterial({
+  baseColor,
+  sideAlpha,
+  surfaceY,
+  depthTint,
+}) {
+  return new THREE.ShaderMaterial({
+    vertexShader: WATER_SIDE_VERTEX_SHADER,
+    fragmentShader: WATER_SIDE_FRAGMENT_SHADER,
+    uniforms: {
+      uShallowColor: { value: new THREE.Color(baseColor) },
+      uDeepColor: { value: new THREE.Color(depthTint.deepColor) },
+      uDepthAttenuation: { value: depthTint.attenuation },
+      uSurfaceY: { value: surfaceY },
+      uAlpha: { value: sideAlpha },
+    },
     transparent: true,
-    opacity: sideAlpha,
     depthWrite: false,
     side: THREE.DoubleSide,
   });
 }
 
-function updateWaterMaterial(material, { sunReflection, slopeShading }) {
+function updateSideMaterial(material, { depthTint }) {
+  material.uniforms.uDepthAttenuation.value = depthTint.attenuation;
+}
+
+function updateWaterMaterial(
+  material,
+  { sunReflection, slopeShading, depthTint },
+) {
   material.uniforms.uSunReflectionStrength.value = sunReflection.strength;
   material.uniforms.uSunReflectionShininess.value = sunReflection.shininess;
   material.uniforms.uSunReflectionSpread.value = sunReflection.spread;
   material.uniforms.uSlopeLightStrength.value = slopeShading.lightStrength;
   material.uniforms.uSlopeShadowStrength.value = slopeShading.shadowStrength;
   material.uniforms.uSlopeNormalBoost.value = slopeShading.normalBoost;
+  material.uniforms.uDepthAttenuation.value = depthTint.attenuation;
 }
 
 function updateSurfaceGeometry(geometry, params, time) {

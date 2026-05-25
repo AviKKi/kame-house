@@ -122,6 +122,17 @@ const NORMAL_CONTROLS = [
   },
 ];
 
+const DEPTH_TINT_CONTROLS = [
+  {
+    key: 'attenuation',
+    label: 'Depth Tint',
+    min: 0,
+    max: 5,
+    step: 0.05,
+    format: (value) => value.toFixed(2),
+  },
+];
+
 const CAUSTIC_CONTROLS = [
   {
     key: 'scale',
@@ -235,6 +246,7 @@ export function createWaterTuningMenu({
   const reflection = params.sunReflection;
   const slopeShading = params.slopeShading;
   const normalBlending = params.normalBlending;
+  const depthTint = params.depthTint;
   const caustics = floorParams ? floorParams.caustics : null;
   const panel = document.createElement('section');
   const toggleButton = document.createElement('button');
@@ -269,6 +281,10 @@ export function createWaterTuningMenu({
     </div>
     <div class="control-list" data-control-group="normals"></div>
     <div class="tuning-header tuning-header-secondary">
+      <h1>Depth Tint</h1>
+    </div>
+    <div class="control-list" data-control-group="depth"></div>
+    <div class="tuning-header tuning-header-secondary">
       <h1>Caustics</h1>
     </div>
     <div class="control-list" data-control-group="caustics"></div>
@@ -290,6 +306,9 @@ export function createWaterTuningMenu({
   const slopeControlList = panel.querySelector('[data-control-group="slope"]');
   const normalControlList = panel.querySelector(
     '[data-control-group="normals"]',
+  );
+  const depthControlList = panel.querySelector(
+    '[data-control-group="depth"]',
   );
   const causticControlList = panel.querySelector(
     '[data-control-group="caustics"]',
@@ -429,6 +448,29 @@ export function createWaterTuningMenu({
 
     row.append(control.label, input, value);
     normalControlList.append(row);
+  });
+
+  DEPTH_TINT_CONTROLS.forEach((control) => {
+    const row = document.createElement('label');
+    const value = document.createElement('span');
+    const input = document.createElement('input');
+
+    row.className = 'control-row';
+    input.type = 'range';
+    input.min = control.min;
+    input.max = control.max;
+    input.step = control.step;
+    input.value = depthTint[control.key];
+    value.textContent = control.format(depthTint[control.key]);
+
+    input.addEventListener('input', () => {
+      const nextValue = Number(input.value);
+      depthTint[control.key] = nextValue;
+      value.textContent = control.format(nextValue);
+    });
+
+    row.append(control.label, input, value);
+    depthControlList.append(row);
   });
 
   if (caustics) {
