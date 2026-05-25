@@ -106,7 +106,7 @@ const LEVEL_2_CONTROLS = [
   },
   {
     key: 'wavelength',
-    label: 'Length',
+    label: 'Base Length',
     min: 1.2,
     max: 7,
     step: 0.1,
@@ -130,7 +130,7 @@ const LEVEL_2_CONTROLS = [
   },
   {
     key: 'secondaryStrength',
-    label: 'Layering',
+    label: 'Layer Mix',
     min: 0,
     max: 0.8,
     step: 0.01,
@@ -138,9 +138,17 @@ const LEVEL_2_CONTROLS = [
   },
   {
     key: 'noiseStrength',
-    label: 'Noise',
+    label: 'Phase Warp',
     min: 0,
     max: 0.7,
+    step: 0.01,
+    format: (value) => value.toFixed(2),
+  },
+  {
+    key: 'steepness',
+    label: 'Steepness',
+    min: 0,
+    max: 0.9,
     step: 0.01,
     format: (value) => value.toFixed(2),
   },

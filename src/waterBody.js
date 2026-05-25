@@ -1,5 +1,75 @@
 import * as THREE from 'three';
 
+const LEVEL_2_SWELL_COMPONENTS = [
+  {
+    amplitude: 1,
+    wavelength: 1,
+    speed: 1,
+    directionOffset: 0,
+    phase: 0.2,
+    steepness: 1,
+    crest: 0.52,
+    warpScale: 0.72,
+    warpSpeed: 0.28,
+    warpStrength: 1,
+    seed: [3.1, -8.4],
+  },
+  {
+    amplitude: 0.58,
+    wavelength: 0.74,
+    speed: 1.08,
+    directionOffset: 18,
+    phase: 2.35,
+    steepness: 0.82,
+    crest: 0.42,
+    warpScale: 0.92,
+    warpSpeed: 0.34,
+    warpStrength: 0.82,
+    seed: [-11.7, 5.9],
+  },
+  {
+    amplitude: 0.38,
+    wavelength: 0.52,
+    speed: 1.24,
+    directionOffset: -23,
+    phase: 4.1,
+    steepness: 0.64,
+    crest: 0.35,
+    warpScale: 1.18,
+    warpSpeed: 0.42,
+    warpStrength: 0.72,
+    seed: [19.3, 14.2],
+  },
+  {
+    amplitude: 0.24,
+    wavelength: 0.36,
+    speed: 1.42,
+    directionOffset: 36,
+    phase: 1.42,
+    steepness: 0.48,
+    crest: 0.28,
+    warpScale: 1.46,
+    warpSpeed: 0.48,
+    warpStrength: 0.58,
+    seed: [-4.6, 23.8],
+  },
+  {
+    amplitude: 0.16,
+    wavelength: 1.34,
+    speed: 0.78,
+    directionOffset: -41,
+    phase: 5.25,
+    steepness: 0.34,
+    crest: 0.18,
+    warpScale: 0.5,
+    warpSpeed: 0.22,
+    warpStrength: 0.44,
+    seed: [27.8, -17.5],
+  },
+];
+
+const LEVEL_2_PHASE_WARP_OCTAVES = 3;
+
 const WATER_SURFACE_VERTEX_SHADER = `
   varying vec3 vWorldPosition;
   varying vec3 vWorldNormal;
@@ -72,9 +142,11 @@ export function createWaterBody(params) {
 
   const surface = new THREE.Mesh(surfaceGeometry, surfaceMaterial);
   surface.renderOrder = 2;
+  surface.frustumCulled = false;
 
   const side = new THREE.Mesh(sideGeometry, createWaterSideMaterial(params));
   side.renderOrder = 1;
+  side.frustumCulled = false;
 
   group.add(side, surface);
   group.userData.water = {
@@ -151,6 +223,7 @@ function createWaterSurfaceGeometry({
   geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
   geometry.setIndex(indices);
   geometry.userData.vertexCount = positions.length / 3;
+  geometry.userData.basePositions = new Float32Array(positions);
 
   return geometry;
 }
@@ -189,6 +262,7 @@ function createWaterSideGeometry({ radius, surfaceY, depth, angularSegments }) {
   );
   geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
   geometry.setIndex(indices);
+  geometry.userData.basePositions = new Float32Array(positions);
   geometry.computeVertexNormals();
 
   return geometry;
@@ -252,11 +326,18 @@ function updateWaterMaterial(material, { sunReflection, slopeShading }) {
 
 function updateSurfaceGeometry(geometry, params, time) {
   const position = geometry.getAttribute('position');
+  const basePositions = geometry.userData.basePositions;
 
   for (let index = 0; index < geometry.userData.vertexCount; index += 1) {
-    const x = position.getX(index);
-    const z = position.getZ(index);
-    position.setY(index, getSurfaceHeight(x, z, params, time));
+    const baseIndex = index * 3;
+    const surfacePoint = getSurfacePoint(
+      basePositions[baseIndex],
+      basePositions[baseIndex + 2],
+      params,
+      time,
+    );
+
+    position.setXYZ(index, surfacePoint.x, surfacePoint.y, surfacePoint.z);
   }
 
   position.needsUpdate = true;
@@ -266,24 +347,41 @@ function updateSurfaceGeometry(geometry, params, time) {
 
 function updateSideGeometry(geometry, params, time) {
   const position = geometry.getAttribute('position');
+  const basePositions = geometry.userData.basePositions;
 
   for (let segment = 0; segment < params.angularSegments; segment += 1) {
     const topIndex = segment * 2 + 1;
-    const x = position.getX(topIndex);
-    const z = position.getZ(topIndex);
-    position.setY(topIndex, getSurfaceHeight(x, z, params, time));
+    const baseIndex = topIndex * 3;
+    const surfacePoint = getSurfacePoint(
+      basePositions[baseIndex],
+      basePositions[baseIndex + 2],
+      params,
+      time,
+    );
+
+    position.setXYZ(topIndex, surfacePoint.x, surfacePoint.y, surfacePoint.z);
   }
 
   position.needsUpdate = true;
   geometry.computeVertexNormals();
 }
 
-function getSurfaceHeight(x, z, { surfaceY, waves }, time) {
-  return (
-    surfaceY +
-    getLevel2DirectionalHeight(x, z, waves.level2, time) +
-    getLevel1NoiseHeight(x, z, waves.level1, time)
+function getSurfacePoint(x, z, params, time) {
+  const level2Displacement = getLevel2SwellDisplacement(
+    x,
+    z,
+    params.waves.level2,
+    time,
   );
+
+  return {
+    x: x + level2Displacement.x,
+    y:
+      params.surfaceY +
+      level2Displacement.y +
+      getLevel1NoiseHeight(x, z, params.waves.level1, time),
+    z: z + level2Displacement.z,
+  };
 }
 
 function getLevel1NoiseHeight(x, z, level1, time) {
@@ -320,53 +418,115 @@ function getLevel1NoiseHeight(x, z, level1, time) {
   return (value - 0.5) * level1.amplitude;
 }
 
-function getLevel2DirectionalHeight(x, z, level2, time) {
+function getLevel2SwellDisplacement(x, z, level2, time) {
   if (!level2.enabled || level2.amplitude === 0) {
+    return { x: 0, y: 0, z: 0 };
+  }
+
+  const baseDirection = angleToVector(level2.directionDegrees);
+  const layerMix = THREE.MathUtils.clamp(level2.secondaryStrength, 0, 1);
+  const phaseWarp = THREE.MathUtils.clamp(level2.noiseStrength, 0, 1);
+  const steepness = THREE.MathUtils.clamp(level2.steepness ?? 0.34, 0, 1);
+  const baseWavelength = Math.max(0.2, level2.wavelength);
+  const baseTravel = level2.speed * time;
+  let horizontalX = 0;
+  let horizontalZ = 0;
+  let height = 0;
+  let amplitudeSum = 0;
+
+  LEVEL_2_SWELL_COMPONENTS.forEach((component, index) => {
+    const layerWeight = index === 0 ? 1 : layerMix;
+
+    if (layerWeight === 0) {
+      return;
+    }
+
+    const componentDirection = angleToVector(
+      level2.directionDegrees + component.directionOffset * layerMix,
+    );
+    const wavelength = Math.max(
+      0.2,
+      baseWavelength * component.wavelength,
+    );
+    const amplitude = level2.amplitude * component.amplitude * layerWeight;
+    const waveNumber = (Math.PI * 2) / wavelength;
+    const speed =
+      level2.speed *
+      component.speed *
+      Math.sqrt(wavelength / baseWavelength);
+    const along = x * componentDirection.x + z * componentDirection.z;
+    const phase =
+      waveNumber * (along - speed * time) + component.phase + getPhaseWarp({
+        x,
+        z,
+        baseDirection,
+        baseTravel,
+        component,
+        phaseWarp,
+        wavelength,
+      });
+    const sine = Math.sin(phase);
+    const cosine = Math.cos(phase);
+    const crestAmount = steepness * component.crest;
+    const shapedSine =
+      (sine + Math.sin(phase * 2 + component.phase) * crestAmount * 0.34) /
+      (1 + crestAmount * 0.18);
+    const horizontalOffset =
+      cosine * amplitude * steepness * component.steepness;
+
+    height += shapedSine * amplitude;
+    horizontalX += componentDirection.x * horizontalOffset;
+    horizontalZ += componentDirection.z * horizontalOffset;
+    amplitudeSum += amplitude;
+  });
+
+  const verticalScale =
+    amplitudeSum > 0
+      ? level2.amplitude / Math.max(level2.amplitude, amplitudeSum)
+      : 1;
+
+  return {
+    x: horizontalX,
+    y: height * verticalScale,
+    z: horizontalZ,
+  };
+}
+
+function getPhaseWarp({
+  x,
+  z,
+  baseDirection,
+  baseTravel,
+  component,
+  phaseWarp,
+  wavelength,
+}) {
+  if (phaseWarp === 0) {
     return 0;
   }
 
-  const direction = angleToVector(level2.directionDegrees);
-  const perpendicular = {
-    x: -direction.z,
-    z: direction.x,
-  };
-  const along = x * direction.x + z * direction.z;
-  const across = x * perpendicular.x + z * perpendicular.z;
-  const waveNumber = (Math.PI * 2) / level2.wavelength;
-  const travel = level2.speed * time;
-  const basePhase = waveNumber * (along - travel);
-  const noiseScale = 1 / level2.wavelength;
-  const phaseNoise =
-    (fbm(
-      along * noiseScale * 1.25 - travel * 0.22,
-      across * noiseScale * 0.72 + travel * 0.11,
-      3,
-    ) -
-      0.5) *
-    level2.noiseStrength *
-    Math.PI;
-
-  const primary = Math.sin(basePhase + phaseNoise);
-  const secondary = Math.sin(
-    basePhase * 1.72 +
-      across * waveNumber * 0.32 +
-      phaseNoise * 0.65 +
-      1.8,
-  );
-  const longDrift =
+  const warpScale = component.warpScale / wavelength;
+  const driftX = baseDirection.x * baseTravel * component.warpSpeed;
+  const driftZ = baseDirection.z * baseTravel * component.warpSpeed;
+  const broadWarp =
     fbm(
-      along * noiseScale * 0.42 - travel * 0.08,
-      across * noiseScale * 0.3,
+      x * warpScale - driftX + component.seed[0],
+      z * warpScale - driftZ + component.seed[1],
+      LEVEL_2_PHASE_WARP_OCTAVES,
+    ) - 0.5;
+  const crossWarp =
+    fbm(
+      z * warpScale * 0.74 + driftZ * 0.35 + component.seed[1],
+      x * warpScale * 0.74 - driftX * 0.35 + component.seed[0],
       2,
     ) - 0.5;
-  const combined =
-    primary +
-    secondary * level2.secondaryStrength +
-    longDrift * level2.noiseStrength;
-  const normalizer =
-    1 + level2.secondaryStrength + level2.noiseStrength * 0.5;
 
-  return (combined / normalizer) * level2.amplitude;
+  return (
+    (broadWarp + crossWarp * 0.55) *
+    phaseWarp *
+    component.warpStrength *
+    Math.PI
+  );
 }
 
 function angleToVector(degrees) {

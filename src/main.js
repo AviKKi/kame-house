@@ -98,12 +98,13 @@ const WATER_PARAMS = {
     },
     level2: {
       enabled: true,
-      amplitude: 0.16,
-      wavelength: 3.4,
-      speed: 0.62,
+      amplitude: 0.18,
+      wavelength: 3.8,
+      speed: 0.58,
       directionDegrees: -28,
-      secondaryStrength: 0.34,
-      noiseStrength: 0.22,
+      secondaryStrength: 0.68,
+      noiseStrength: 0.3,
+      steepness: 0.38,
     },
   },
 };

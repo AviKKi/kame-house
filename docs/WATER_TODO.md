@@ -189,7 +189,7 @@ Implementation notes:
 
 ### 8. Replace Level 2 With Multi-Layer Gerstner Swell
 
-Status: pending
+Status: done
 
 Goal: replace the current too-uniform sine-like broad waves with multi-layer Gerstner-style swell and phase-warped directionality.
 
@@ -205,9 +205,14 @@ Acceptance:
 Implementation notes:
 
 - Current level 2 was useful as a first pass but reads too sinusoidal.
-- Prefer Gerstner-style horizontal/vertical displacement or a close heightfield approximation if we want to preserve the current cylinder topology.
-- Use noise as phase/domain warp, not as the only movement model.
+- Replaced the single broad directional formula with five Gerstner-style swell components.
+- Each component has its own amplitude, wavelength, speed, direction offset, phase, crest shaping, steepness, and warp seed.
+- Level 2 now displaces x/z as well as y for a more wave-like surface, while the side-wall rim reads from the same base coordinates so the cylinder remains connected.
+- The menu exposes Base Length, Speed, Direction, Layer Mix, Phase Warp, and Steepness for this layer.
+- Noise is used as phase/domain warp, not as the only movement model.
 - Defer Voronoi to future caustic/foam breakup if needed; do not use it for the middle-ocean heightfield now.
+- Build check passed with `npm run build`.
+- Headless browser screenshot verified the scene renders, the sun remains visible, and the settings menu is collapsed by default.
 
 ### 9. Blend Small And Large Wave Normals
 

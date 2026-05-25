@@ -184,7 +184,7 @@ This gives a larger wind-directed movement while keeping level 1 as the smaller,
 
 ## Next Level 2 Direction: Gerstner/Phase-Warped Swell
 
-The current level 2 implementation is intentionally simple, but it can read too much like repeated sine stripes. The next improvement should replace it with multi-layer Gerstner-style swell plus phase warping.
+The previous level 2 implementation was intentionally simple, but it read too much like repeated sine stripes. The current direction is multi-layer Gerstner-style swell plus phase warping.
 
 Do not use Voronoi for main ocean height. Voronoi tends to read as cells, cracks, scales, or caustics. For now, ignore Voronoi entirely unless later needed for caustic or foam breakup.
 
@@ -235,7 +235,50 @@ h_water(p, t) =
   + sum_i A_i * sin(k_i * dot(d_i, p) - speed_i * t + phi_i + warp_i(p, t))
 ```
 
-If true Gerstner horizontal displacement is used later, the side-wall rim must use the same horizontal and vertical displacement so the cylindrical water edge remains connected.
+Because horizontal displacement is now active, the side-wall rim must keep using the same horizontal and vertical displacement as the top surface so the cylindrical water edge remains connected.
+
+Current build variant:
+
+```text
+eta_2(p, t) =
+  sum_i A_i *
+  (
+    sin(phase_i + warp_i)
+    + crest_i * sin(2 * (phase_i + warp_i) + phi_i)
+  )
+```
+
+with horizontal displacement:
+
+```text
+offset_xz_i =
+  steepness_i * A_i * d_i * cos(phase_i + warp_i)
+```
+
+The top surface stores immutable base positions. Each frame it computes:
+
+```text
+P_top =
+  [
+    x + sum_i offset_x_i,
+    h_0 + eta_1(p, t) + eta_2(p, t),
+    z + sum_i offset_z_i
+  ]
+```
+
+The side-wall top ring uses the same displaced `P_top` result for its base rim coordinates. The bottom ring stays fixed, so the water body remains a shallow visible cylinder while the top rim follows the swell.
+
+Current exposed controls:
+
+```text
+amplitude       overall broad-wave height
+base length     base wavelength for the component stack
+speed           wind-driven travel speed
+direction       wind direction in degrees
+layer mix       contribution from secondary components
+phase warp      fBM phase/domain warp strength
+steepness       Gerstner horizontal offset and crest shaping strength
+```
 
 ## Final Water Height
 
