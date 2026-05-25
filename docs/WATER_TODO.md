@@ -57,7 +57,7 @@ Implementation notes:
 
 ### 2. Add Solid Circular Floor
 
-Status: pending
+Status: pending; intentionally skipped for now by request
 
 Goal: add one solid circular floor below water level.
 
@@ -67,29 +67,47 @@ Acceptance:
 - Color reads as submerged sand/ground, not a decorative island.
 - Radius, height, color, and subdivision count are constants.
 
-### 3. Add Flat Circular Water Disc
+### 3. Add Cylindrical Water Body
 
-Status: pending
+Status: done
 
-Goal: add a custom polar disc mesh at water height.
+Goal: add a custom water body with a cylindrical side wall and dynamic polar top surface.
 
 Acceptance:
 
 - Circular outline is clean from orbit angles.
-- Mesh topology supports later wave displacement.
-- No wave animation yet.
+- Top mesh topology supports equation-driven wave displacement.
+- Side wall top rim follows the same height equation as the top mesh.
+- No island, floor, caustics, refraction, or extra decorative meshes yet.
+
+Implementation notes:
+
+- Replaced `src/waterDisc.js` with `src/waterBody.js`.
+- Water is a group containing a dynamic polar top mesh and a cylindrical side wall.
+- Top mesh vertex heights are driven through one centralized surface-height equation.
+- Side wall top vertices use the same equation, so future waves will not detach from the rim.
+- Water radius, surface height, depth, subdivisions, and surface equation params are constants in `src/main.js`.
+- Build check passed with `npm run build`.
+- Screenshot check verified a cylindrical water body with the sun still visible.
 
 ### 4. Add Transparent Water Material
 
-Status: pending
+Status: done
 
-Goal: make the disc read as water using color, alpha, and Fresnel only.
+Goal: make the water body read as transparent water using color, alpha, and Fresnel only.
 
 Acceptance:
 
 - Water is transparent enough to see the floor.
 - Glancing angles are slightly brighter.
-- No noisy patterns or waves yet.
+- No caustics or refraction yet.
+
+Implementation notes:
+
+- The top surface uses a minimal `ShaderMaterial` with base color, reflection color, alpha, and Fresnel uniforms.
+- The side wall uses a separate transparent material so the water has visible depth.
+- A small CPU-side fBm height equation is in place as the surface driver; later steps will replace/tune the wave layers rather than changing topology.
+- Floor visibility acceptance is deferred because Step 2 is still pending.
 
 ### 5. Add Level 1 Small Ripple Normal Noise
 

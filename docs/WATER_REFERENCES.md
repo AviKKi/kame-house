@@ -23,9 +23,33 @@ p(rho, theta) = [rho cos(theta), rho sin(theta)]
 
 For this water-only phase:
 
-- Water: circular disc first, then annular/ring mesh later if needed.
+- Water: shallow cylindrical volume with a dynamic polar top mesh and matching side wall.
 - Underwater floor: full circular floor below water.
 - Island terrain: deferred until the water stack works.
+
+Water top surface:
+
+```text
+P_top(rho, theta, t) =
+  [
+    rho cos(theta),
+    h_water(rho cos(theta), rho sin(theta), t),
+    rho sin(theta)
+  ]
+```
+
+Water side wall:
+
+```text
+P_side(theta, s, t) =
+  [
+    R cos(theta),
+    mix(y_bottom, h_water(R cos(theta), R sin(theta), t), s),
+    R sin(theta)
+  ]
+```
+
+The top mesh and side-wall rim must use the same `h_water` function. Otherwise large waves later will visually detach from the cylindrical water edge.
 
 ## Annular Water Mask
 

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { createWaterBody, updateWaterBody } from './waterBody.js';
 import './styles.css';
 
 const SCENE_PARAMS = {
@@ -27,6 +28,29 @@ const SUN_PARAMS = {
   intensity: 3.2,
   position: [0.0, 2.0, -4.0],
   markerRadius: 0.35,
+};
+
+const WATER_PARAMS = {
+  radius: 3.8,
+  surfaceY: 0,
+  depth: 0.46,
+  radialSegments: 64,
+  angularSegments: 192,
+  baseColor: 0x50d4df,
+  reflectionColor: 0xe1fbff,
+  sideColor: 0x36b8c7,
+  surfaceAlpha: 0.5,
+  sideAlpha: 0.44,
+  fresnelStrength: 0.82,
+  fresnelPower: 4.8,
+  surface: {
+    enabled: true,
+    amplitude: 0.08,
+    frequency: 0.9,
+    speed: 0.22,
+    drift: [0.8, -0.45],
+    octaves: 3,
+  },
 };
 
 const canvas = document.querySelector('#scene');
@@ -72,6 +96,11 @@ const sunMarker = new THREE.Mesh(
 sunMarker.position.copy(sun.position);
 scene.add(sunMarker);
 
+const water = createWaterBody(WATER_PARAMS);
+scene.add(water);
+
+const clock = new THREE.Clock();
+
 function resizeRenderer() {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
@@ -79,6 +108,7 @@ function resizeRenderer() {
 }
 
 function animate() {
+  updateWaterBody(water, clock.getElapsedTime());
   controls.update();
   renderer.render(scene, camera);
   requestAnimationFrame(animate);
