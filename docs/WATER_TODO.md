@@ -36,15 +36,24 @@ Acceptance:
 
 ### 1. Add Camera, Renderer, Controls, And Sun
 
-Status: pending
+Status: done
 
 Goal: create a stable inspection scene with only camera, renderer, orbit controls, and directional sunlight.
 
 Acceptance:
 
-- No visible meshes yet.
+- No water or floor meshes yet.
+- Sun is visible in camera as the light-source marker.
 - Controls feel stable.
 - Sun params are tweakable from constants.
+
+Implementation notes:
+
+- Constants live at the top of `src/main.js`.
+- The actual light is a `DirectionalLight`.
+- The visible sun is a small `MeshBasicMaterial` sphere at the same position.
+- Build check passed with `npm run build`.
+- Headless Chrome screenshot verified the sun is visible in frame.
 
 ### 2. Add Solid Circular Floor
 

@@ -22,3 +22,9 @@ body {
   overflow: hidden;
   background: #d7edf0;
 }
+
+#scene {
+  display: block;
+  width: 100vw;
+  height: 100vh;
+}
