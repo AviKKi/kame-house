@@ -187,7 +187,29 @@ Implementation notes:
 - Build check passed with `npm run build`.
 - Screenshot check verified visible broad wave movement with the settings menu collapsed by default.
 
-### 8. Blend Small And Large Wave Normals
+### 8. Replace Level 2 With Multi-Layer Gerstner Swell
+
+Status: pending
+
+Goal: replace the current too-uniform sine-like broad waves with multi-layer Gerstner-style swell and phase-warped directionality.
+
+Acceptance:
+
+- Main ocean movement reads less like one repeated sine wave.
+- Use 3-5 larger wave components with varied direction, amplitude, wavelength, speed, steepness, and phase.
+- Add phase warping/noise to break uniform stripes while preserving a clear wind-driven travel direction.
+- Level 1 remains the smaller, faster local disturbance on top.
+- Voronoi is not used for primary height displacement.
+- Keep relevant params exposed in the collapsible settings menu.
+
+Implementation notes:
+
+- Current level 2 was useful as a first pass but reads too sinusoidal.
+- Prefer Gerstner-style horizontal/vertical displacement or a close heightfield approximation if we want to preserve the current cylinder topology.
+- Use noise as phase/domain warp, not as the only movement model.
+- Defer Voronoi to future caustic/foam breakup if needed; do not use it for the middle-ocean heightfield now.
+
+### 9. Blend Small And Large Wave Normals
 
 Status: pending
 
@@ -199,7 +221,7 @@ Acceptance:
 - Small waves affect highlights.
 - Normals do not create broken/dark artifacts.
 
-### 9. Add Edge Fade And Disc Mask
+### 10. Add Edge Fade And Disc Mask
 
 Status: pending
 
@@ -211,7 +233,7 @@ Acceptance:
 - No harsh square/canvas artifacts.
 - Inner/outer mask formulas are centralized.
 
-### 10. Add Caustics To Floor Below Water
+### 11. Add Caustics To Floor Below Water
 
 Status: pending
 
@@ -223,7 +245,7 @@ Acceptance:
 - Pattern is pale cyan-white, not pure white cracks.
 - Scale, speed, threshold, and strength are constants.
 
-### 11. Add Depth-Based Water Color
+### 12. Add Depth-Based Water Color
 
 Status: pending
 
@@ -235,7 +257,7 @@ Acceptance:
 - Depth tint does not make the whole disc opaque.
 - Attenuation strength is tweakable.
 
-### 12. Add Screen-Space Refraction
+### 13. Add Screen-Space Refraction
 
 Status: pending
 
@@ -247,7 +269,7 @@ Acceptance:
 - Refraction amount is subtle.
 - Render order is explicit and documented.
 
-### 13. Final Water Pass
+### 14. Final Water Pass
 
 Status: pending
 

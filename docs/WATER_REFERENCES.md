@@ -182,6 +182,61 @@ eta_2 =
 
 This gives a larger wind-directed movement while keeping level 1 as the smaller, faster local disturbance.
 
+## Next Level 2 Direction: Gerstner/Phase-Warped Swell
+
+The current level 2 implementation is intentionally simple, but it can read too much like repeated sine stripes. The next improvement should replace it with multi-layer Gerstner-style swell plus phase warping.
+
+Do not use Voronoi for main ocean height. Voronoi tends to read as cells, cracks, scales, or caustics. For now, ignore Voronoi entirely unless later needed for caustic or foam breakup.
+
+Gerstner wave component:
+
+```text
+d_i = normalize([cos(theta_i), sin(theta_i)])
+k_i = 2 pi / wavelength_i
+phase_i = k_i * dot(d_i, p) - speed_i * t + phi_i
+
+height_i = A_i * sin(phase_i)
+horizontal_i = steepness_i * A_i * d_i * cos(phase_i)
+```
+
+Multi-layer swell:
+
+```text
+eta_2(p, t) = sum_i A_i * sin(phase_i + warp_i(p, t))
+```
+
+Suggested component progression:
+
+```text
+A_(i+1) = A_i * 0.45 to 0.7
+wavelength_(i+1) = wavelength_i * 0.45 to 0.75
+direction_i = windDirection + small angle offset
+speed_i = baseSpeed * sqrt(wavelength_i / baseWavelength)
+```
+
+Phase warp:
+
+```text
+warp_i(p, t) =
+  warpStrength_i *
+  fbm(
+    p * warpScale_i
+    - windDirection * warpSpeed_i * t
+    + seed_i
+  )
+```
+
+Heightfield-friendly version:
+
+```text
+h_water(p, t) =
+  h_0
+  + eta_1_small_noise(p, t)
+  + sum_i A_i * sin(k_i * dot(d_i, p) - speed_i * t + phi_i + warp_i(p, t))
+```
+
+If true Gerstner horizontal displacement is used later, the side-wall rim must use the same horizontal and vertical displacement so the cylindrical water edge remains connected.
+
 ## Final Water Height
 
 ```text
