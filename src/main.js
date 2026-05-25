@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { createWaterBody, updateWaterBody } from './waterBody.js';
+import { createFloorBody, updateFloorBody } from './floorBody.js';
 import { createWaterTuningMenu } from './waterTuningMenu.js';
 import './styles.css';
 
@@ -114,6 +115,23 @@ const WATER_PARAMS = {
   },
 };
 
+const FLOOR_PARAMS = {
+  radius: WATER_PARAMS.radius,
+  y: WATER_PARAMS.surfaceY - WATER_PARAMS.depth,
+  angularSegments: 192,
+  color: 0x9ea995,
+  maskRadius: WATER_PARAMS.radius,
+  maskEdgeFade: 0.55,
+  caustics: {
+    color: 0xf3ffff,
+    scale: 1.4,
+    speed: 0.22,
+    threshold: 1.22,
+    width: 0.8,
+    strength: 1.05,
+  },
+};
+
 const canvas = document.querySelector('#scene');
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(SCENE_PARAMS.backgroundColor);
@@ -157,10 +175,14 @@ const sunMarker = new THREE.Mesh(
 sunMarker.position.copy(sun.position);
 scene.add(sunMarker);
 
+const floor = createFloorBody(FLOOR_PARAMS);
+scene.add(floor);
+
 const water = createWaterBody(WATER_PARAMS);
 scene.add(water);
 createWaterTuningMenu({
   params: WATER_PARAMS,
+  floorParams: FLOOR_PARAMS,
   presets: LEVEL_1_NOISE_PRESETS,
   initialPreset: 'ripple',
 });
@@ -174,7 +196,9 @@ function resizeRenderer() {
 }
 
 function animate() {
-  updateWaterBody(water, clock.getElapsedTime());
+  const elapsed = clock.getElapsedTime();
+  updateFloorBody(floor, elapsed);
+  updateWaterBody(water, elapsed);
   controls.update();
   renderer.render(scene, camera);
   requestAnimationFrame(animate);

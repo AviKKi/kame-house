@@ -122,6 +122,49 @@ const NORMAL_CONTROLS = [
   },
 ];
 
+const CAUSTIC_CONTROLS = [
+  {
+    key: 'scale',
+    label: 'Scale',
+    min: 0.4,
+    max: 4,
+    step: 0.05,
+    format: (value) => value.toFixed(2),
+  },
+  {
+    key: 'speed',
+    label: 'Speed',
+    min: 0,
+    max: 1.2,
+    step: 0.01,
+    format: (value) => value.toFixed(2),
+  },
+  {
+    key: 'threshold',
+    label: 'Threshold',
+    min: 0.4,
+    max: 1.7,
+    step: 0.01,
+    format: (value) => value.toFixed(2),
+  },
+  {
+    key: 'width',
+    label: 'Width',
+    min: 0.05,
+    max: 0.8,
+    step: 0.01,
+    format: (value) => value.toFixed(2),
+  },
+  {
+    key: 'strength',
+    label: 'Strength',
+    min: 0,
+    max: 1.4,
+    step: 0.01,
+    format: (value) => value.toFixed(2),
+  },
+];
+
 const LEVEL_2_CONTROLS = [
   {
     key: 'amplitude',
@@ -181,12 +224,18 @@ const LEVEL_2_CONTROLS = [
   },
 ];
 
-export function createWaterTuningMenu({ params, presets, initialPreset }) {
+export function createWaterTuningMenu({
+  params,
+  floorParams,
+  presets,
+  initialPreset,
+}) {
   const level1 = params.waves.level1;
   const level2 = params.waves.level2;
   const reflection = params.sunReflection;
   const slopeShading = params.slopeShading;
   const normalBlending = params.normalBlending;
+  const caustics = floorParams ? floorParams.caustics : null;
   const panel = document.createElement('section');
   const toggleButton = document.createElement('button');
   const presetButtons = new Map();
@@ -219,6 +268,10 @@ export function createWaterTuningMenu({ params, presets, initialPreset }) {
       <h1>Wave Normals</h1>
     </div>
     <div class="control-list" data-control-group="normals"></div>
+    <div class="tuning-header tuning-header-secondary">
+      <h1>Caustics</h1>
+    </div>
+    <div class="control-list" data-control-group="caustics"></div>
   `;
 
   toggleButton.className = 'tuning-fab';
@@ -237,6 +290,9 @@ export function createWaterTuningMenu({ params, presets, initialPreset }) {
   const slopeControlList = panel.querySelector('[data-control-group="slope"]');
   const normalControlList = panel.querySelector(
     '[data-control-group="normals"]',
+  );
+  const causticControlList = panel.querySelector(
+    '[data-control-group="caustics"]',
   );
 
   Object.entries(presets).forEach(([key, preset]) => {
@@ -374,6 +430,31 @@ export function createWaterTuningMenu({ params, presets, initialPreset }) {
     row.append(control.label, input, value);
     normalControlList.append(row);
   });
+
+  if (caustics) {
+    CAUSTIC_CONTROLS.forEach((control) => {
+      const row = document.createElement('label');
+      const value = document.createElement('span');
+      const input = document.createElement('input');
+
+      row.className = 'control-row';
+      input.type = 'range';
+      input.min = control.min;
+      input.max = control.max;
+      input.step = control.step;
+      input.value = caustics[control.key];
+      value.textContent = control.format(caustics[control.key]);
+
+      input.addEventListener('input', () => {
+        const nextValue = Number(input.value);
+        caustics[control.key] = nextValue;
+        value.textContent = control.format(nextValue);
+      });
+
+      row.append(control.label, input, value);
+      causticControlList.append(row);
+    });
+  }
 
   document.body.append(toggleButton, panel);
   applyPreset(initialPreset);

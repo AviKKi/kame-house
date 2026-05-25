@@ -59,7 +59,7 @@ Implementation notes:
 
 ### 2. Add Solid Circular Floor
 
-Status: pending; intentionally skipped for now by request
+Status: done
 
 Goal: add one solid circular floor below water level.
 
@@ -68,6 +68,15 @@ Acceptance:
 - Flat, simple material.
 - Color reads as submerged sand/ground, not a decorative island.
 - Radius, height, color, and subdivision count are constants.
+
+Implementation notes:
+
+- Added `src/floorBody.js` exporting `createFloorBody` and `updateFloorBody`.
+- Geometry is a `CircleGeometry` rotated to lie flat in the XZ plane.
+- Floor radius, y position, color, and `angularSegments` live in `FLOOR_PARAMS` in `src/main.js`.
+- Radius and y are derived from the existing water radius and depth so the floor matches the water footprint exactly and sits at the bottom of the cylinder.
+- Render order is 0 so the floor draws before the transparent water side and top.
+- Implemented together with Step 11; the floor material is the caustic shader described below.
 
 ### 3. Add Cylindrical Water Body
 
@@ -236,7 +245,7 @@ Implementation notes:
 - Build check passed with `npm run build`.
 - Headless browser screenshot verified the scene renders, the sun remains visible, and the settings menu is still collapsed by default.
 
-### 10. Add Edge Fade And Disc Mask
+### 10. Add Edge Fade And Disc Mask (Doesn't look good, skipping for now)
 
 Status: pending
 
@@ -250,7 +259,7 @@ Acceptance:
 
 ### 11. Add Caustics To Floor Below Water
 
-Status: pending
+Status: done
 
 Goal: add a floor shader caustic effect, not a separate decorative mesh.
 
@@ -259,6 +268,19 @@ Acceptance:
 - Caustics appear only under the water body footprint.
 - Pattern is pale cyan-white, not pure white cracks.
 - Scale, speed, threshold, and strength are constants.
+
+Implementation notes:
+
+- Caustics live in the floor's `ShaderMaterial` fragment shader in `src/floorBody.js`, not as a separate mesh.
+- Pattern uses two crossed 2D simplex noise samples in the noise-line caustic style from the reference doc: `c = smoothstep(threshold, threshold + width, (1 - |snoise_a|) + (1 - |snoise_b|))`.
+- A radial smoothstep mask fades caustics inside the water footprint so the disc edge is soft, not a hard ring.
+- Caustic color is mixed over a muted sage floor color; the cyan-white tint reads correctly through the transparent water.
+- Tuneable constants `FLOOR_PARAMS.caustics`: `color`, `scale`, `speed`, `threshold`, `width`, `strength`.
+- Tuned defaults after live review: scale 1.4, speed 0.22, threshold 1.22, width 0.8, strength 1.05.
+- Added a Caustics section to the water tuning menu with sliders for scale, speed, threshold, width, and strength.
+- Build check passed with `npm run build`.
+- Visual check confirmed pale cyan-white caustic ribbons over the sage floor through the transparent water, with a soft edge fade.
+- Forward note: caustic speed/direction should eventually be driven by the level 2 wind direction and speed instead of independent caustic controls; deferred to a later tuning pass.
 
 ### 12. Add Depth-Based Water Color
 
