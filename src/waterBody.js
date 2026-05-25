@@ -128,6 +128,10 @@ const WATER_SURFACE_FRAGMENT_SHADER = `
   uniform float uSlopeLightStrength;
   uniform float uSlopeShadowStrength;
   uniform float uSlopeNormalBoost;
+  uniform sampler2D uSceneTexture;
+  uniform vec2 uViewportSize;
+  uniform float uRefractionStrength;
+  uniform float uRefractionMix;
 
   varying vec3 vWorldPosition;
   varying vec3 vWorldNormal;
@@ -136,11 +140,17 @@ const WATER_SURFACE_FRAGMENT_SHADER = `
     vec3 normal = normalize(vWorldNormal);
     vec3 viewDirection = normalize(cameraPosition - vWorldPosition);
 
+    vec2 screenUV = gl_FragCoord.xy / uViewportSize;
+    vec2 refractOffset = normal.xz * uRefractionStrength;
+    vec2 refractUV = clamp(screenUV + refractOffset, vec2(0.0), vec2(1.0));
+    vec3 refractedScene = texture2D(uSceneTexture, refractUV).rgb;
+    vec3 shallowTinted = mix(uShallowColor, refractedScene, uRefractionMix);
+
     float depth = max(0.0, vWorldPosition.y - uFloorY);
     float cosView = max(0.05, viewDirection.y);
     float pathLength = depth / cosView;
     float transmission = exp(-uDepthAttenuation * pathLength);
-    vec3 baseColor = mix(uDeepColor, uShallowColor, transmission);
+    vec3 baseColor = mix(uDeepColor, shallowTinted, transmission);
 
     float facing = max(0.0, dot(normal, viewDirection));
     float fresnel = pow(1.0 - facing, uFresnelPower) * uFresnelStrength;
@@ -324,6 +334,7 @@ function createWaterSurfaceMaterial({
   depthTint,
   surfaceY,
   depth,
+  refraction,
 }) {
   const floorY = surfaceY - depth;
   return new THREE.ShaderMaterial({
@@ -335,6 +346,10 @@ function createWaterSurfaceMaterial({
       uDepthAttenuation: { value: depthTint.attenuation },
       uFloorY: { value: floorY },
       uReflectionColor: { value: new THREE.Color(reflectionColor) },
+      uSceneTexture: { value: refraction.texture },
+      uViewportSize: { value: refraction.viewportSize.clone() },
+      uRefractionStrength: { value: refraction.strength },
+      uRefractionMix: { value: refraction.mix },
       uAlpha: { value: surfaceAlpha },
       uFresnelStrength: { value: fresnelStrength },
       uFresnelPower: { value: fresnelPower },
@@ -385,7 +400,7 @@ function updateSideMaterial(material, { depthTint }) {
 
 function updateWaterMaterial(
   material,
-  { sunReflection, slopeShading, depthTint },
+  { sunReflection, slopeShading, depthTint, refraction },
 ) {
   material.uniforms.uSunReflectionStrength.value = sunReflection.strength;
   material.uniforms.uSunReflectionShininess.value = sunReflection.shininess;
@@ -394,6 +409,9 @@ function updateWaterMaterial(
   material.uniforms.uSlopeShadowStrength.value = slopeShading.shadowStrength;
   material.uniforms.uSlopeNormalBoost.value = slopeShading.normalBoost;
   material.uniforms.uDepthAttenuation.value = depthTint.attenuation;
+  material.uniforms.uRefractionStrength.value = refraction.strength;
+  material.uniforms.uRefractionMix.value = refraction.mix;
+  material.uniforms.uViewportSize.value.copy(refraction.viewportSize);
 }
 
 function updateSurfaceGeometry(geometry, params, time) {

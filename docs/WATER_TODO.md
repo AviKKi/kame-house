@@ -308,7 +308,7 @@ Implementation notes:
 
 ### 13. Add Screen-Space Refraction (Plain)
 
-Status: pending
+Status: done
 
 Goal: use a scene color render target and water normal offset to distort the floor through the water. Single-sample refraction with no chromatic split.
 
@@ -324,6 +324,18 @@ Acceptance:
 Notes:
 
 - This step covers plain refraction only; chromatic dispersion (prism) is split into the next step so it can be evaluated independently.
+
+Implementation notes:
+
+- Added a `WebGLRenderTarget` (`refractionTarget`) in `src/main.js` sized to the renderer's drawing buffer. `syncRefractionViewport()` resizes the target and updates `WATER_PARAMS.refraction.viewportSize` on startup and on window resize.
+- Animate loop now does two render passes per frame: (1) `water.visible = false`, render into `refractionTarget`; (2) `water.visible = true`, render to the canvas normally. The water surface samples the captured texture from pass (1).
+- Water surface fragment shader (`src/waterBody.js`) adds `uSceneTexture`, `uViewportSize`, `uRefractionStrength`, `uRefractionMix`. Screen UV is `gl_FragCoord.xy / uViewportSize`; refraction offset is `normal.xz * uRefractionStrength` (world-space horizontal tilt mapped onto screen XY — cheap but reads believably for our roughly top-down orbit).
+- The refracted scene color is blended into the shallow tint via `mix(uShallowColor, refractedScene, uRefractionMix)` before the depth-tint mix runs, so deep portions still tint toward `uDeepColor` and the refracted floor only dominates at shallow paths. Setting `uRefractionMix` to 0 falls back exactly to the Step 12 look.
+- Side wall is not refracted in this step; it stays on the depth-tint shader from Step 12.
+- Tuneable constants `WATER_PARAMS.refraction`: `strength` (0.04 starter) and `mix` (0.55 starter). Defaults chosen to make the floor caustics visibly wobble under waves without over-warping.
+- Added a Refraction section to the water tuning menu with `Strength` (0–0.15) and `Mix` (0–1) sliders.
+- Build check passed with `npm run build`.
+- Visual check pending: confirm floor caustics shift/wobble where wave normals tilt, and that the look stays subtle rather than wet-glass.
 
 ### 14. Add Chromatic Dispersion To Refraction
 

@@ -133,6 +133,25 @@ const DEPTH_TINT_CONTROLS = [
   },
 ];
 
+const REFRACTION_CONTROLS = [
+  {
+    key: 'strength',
+    label: 'Strength',
+    min: 0,
+    max: 0.15,
+    step: 0.002,
+    format: (value) => value.toFixed(3),
+  },
+  {
+    key: 'mix',
+    label: 'Mix',
+    min: 0,
+    max: 1,
+    step: 0.01,
+    format: (value) => value.toFixed(2),
+  },
+];
+
 const CAUSTIC_CONTROLS = [
   {
     key: 'scale',
@@ -247,6 +266,7 @@ export function createWaterTuningMenu({
   const slopeShading = params.slopeShading;
   const normalBlending = params.normalBlending;
   const depthTint = params.depthTint;
+  const refraction = params.refraction;
   const caustics = floorParams ? floorParams.caustics : null;
   const panel = document.createElement('section');
   const toggleButton = document.createElement('button');
@@ -285,6 +305,10 @@ export function createWaterTuningMenu({
     </div>
     <div class="control-list" data-control-group="depth"></div>
     <div class="tuning-header tuning-header-secondary">
+      <h1>Refraction</h1>
+    </div>
+    <div class="control-list" data-control-group="refraction"></div>
+    <div class="tuning-header tuning-header-secondary">
       <h1>Caustics</h1>
     </div>
     <div class="control-list" data-control-group="caustics"></div>
@@ -309,6 +333,9 @@ export function createWaterTuningMenu({
   );
   const depthControlList = panel.querySelector(
     '[data-control-group="depth"]',
+  );
+  const refractionControlList = panel.querySelector(
+    '[data-control-group="refraction"]',
   );
   const causticControlList = panel.querySelector(
     '[data-control-group="caustics"]',
@@ -471,6 +498,29 @@ export function createWaterTuningMenu({
 
     row.append(control.label, input, value);
     depthControlList.append(row);
+  });
+
+  REFRACTION_CONTROLS.forEach((control) => {
+    const row = document.createElement('label');
+    const value = document.createElement('span');
+    const input = document.createElement('input');
+
+    row.className = 'control-row';
+    input.type = 'range';
+    input.min = control.min;
+    input.max = control.max;
+    input.step = control.step;
+    input.value = refraction[control.key];
+    value.textContent = control.format(refraction[control.key]);
+
+    input.addEventListener('input', () => {
+      const nextValue = Number(input.value);
+      refraction[control.key] = nextValue;
+      value.textContent = control.format(nextValue);
+    });
+
+    row.append(control.label, input, value);
+    refractionControlList.append(row);
   });
 
   if (caustics) {

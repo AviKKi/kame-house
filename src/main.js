@@ -100,6 +100,12 @@ const WATER_PARAMS = {
     deepColor: 0x1a6577,
     attenuation: 1.4,
   },
+  refraction: {
+    strength: 0.04,
+    mix: 0.55,
+    texture: null,
+    viewportSize: new THREE.Vector2(),
+  },
   waves: {
     level1: {
       enabled: true,
@@ -178,6 +184,20 @@ const sunMarker = new THREE.Mesh(
 sunMarker.position.copy(sun.position);
 scene.add(sunMarker);
 
+const refractionTarget = new THREE.WebGLRenderTarget(1, 1, {
+  depthBuffer: true,
+});
+WATER_PARAMS.refraction.texture = refractionTarget.texture;
+
+function syncRefractionViewport() {
+  const size = new THREE.Vector2();
+  renderer.getDrawingBufferSize(size);
+  refractionTarget.setSize(size.x, size.y);
+  WATER_PARAMS.refraction.viewportSize.copy(size);
+}
+
+syncRefractionViewport();
+
 const floor = createFloorBody(FLOOR_PARAMS);
 scene.add(floor);
 
@@ -196,6 +216,7 @@ function resizeRenderer() {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
+  syncRefractionViewport();
 }
 
 function animate() {
@@ -203,6 +224,13 @@ function animate() {
   updateFloorBody(floor, elapsed);
   updateWaterBody(water, elapsed);
   controls.update();
+
+  water.visible = false;
+  renderer.setRenderTarget(refractionTarget);
+  renderer.render(scene, camera);
+  renderer.setRenderTarget(null);
+  water.visible = true;
+
   renderer.render(scene, camera);
   requestAnimationFrame(animate);
 }
