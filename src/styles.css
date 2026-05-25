@@ -49,6 +49,61 @@ body {
   font-weight: 700;
 }
 
+.rotation-fab {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  padding: 0;
+  color: #12323a;
+  background: rgba(240, 252, 252, 0.9);
+  border: 1px solid rgba(67, 127, 134, 0.28);
+  border-radius: 50%;
+  box-shadow: 0 10px 30px rgba(28, 78, 86, 0.16);
+  backdrop-filter: blur(12px);
+  cursor: pointer;
+  font: inherit;
+  transition:
+    background 0.18s ease,
+    color 0.18s ease,
+    transform 0.18s ease;
+}
+
+.rotation-fab:hover {
+  transform: scale(1.04);
+}
+
+.rotation-fab[aria-pressed='true'] {
+  color: #ffffff;
+  background: #1d9aa7;
+  border-color: rgba(22, 108, 120, 0.55);
+}
+
+.rotation-fab-icon {
+  display: inline-block;
+  font-size: 1.5rem;
+  line-height: 1;
+  transform: translateY(-1px);
+}
+
+.rotation-fab[aria-pressed='true'] .rotation-fab-icon {
+  animation: rotation-fab-spin 4.5s linear infinite;
+}
+
+@keyframes rotation-fab-spin {
+  from {
+    transform: translateY(-1px) rotate(0deg);
+  }
+  to {
+    transform: translateY(-1px) rotate(360deg);
+  }
+}
+
 .tuning-panel {
   position: fixed;
   top: 16px;

@@ -28,8 +28,26 @@ const CONTROLS_PARAMS = {
 const SUN_PARAMS = {
   color: 0xfff0bf,
   intensity: 3.2,
-  position: [0.0, 2.0, -4.0],
-  markerRadius: 0.35,
+  distance: 7.5,
+  height: 3.4,
+  initialAngleDegrees: 180,
+  position: new THREE.Vector3(),
+  glow: {
+    size: 2.6,
+    coreColor: 0xfff8d6,
+  },
+};
+
+const sunAngleRad = (SUN_PARAMS.initialAngleDegrees * Math.PI) / 180;
+SUN_PARAMS.position.set(
+  Math.sin(sunAngleRad) * SUN_PARAMS.distance,
+  SUN_PARAMS.height,
+  Math.cos(sunAngleRad) * SUN_PARAMS.distance,
+);
+
+const AUTO_ROTATE_PARAMS = {
+  enabledByDefault: true,
+  speed: 0.6,
 };
 
 const LEVEL_1_NOISE_PRESETS = {
@@ -170,20 +188,17 @@ controls.minDistance = CONTROLS_PARAMS.minDistance;
 controls.maxDistance = CONTROLS_PARAMS.maxDistance;
 controls.maxPolarAngle = CONTROLS_PARAMS.maxPolarAngle;
 controls.target.set(...CAMERA_PARAMS.target);
+controls.autoRotate = AUTO_ROTATE_PARAMS.enabledByDefault;
+controls.autoRotateSpeed = AUTO_ROTATE_PARAMS.speed;
 
 const sun = new THREE.DirectionalLight(SUN_PARAMS.color, SUN_PARAMS.intensity);
-sun.position.set(...SUN_PARAMS.position);
+sun.position.copy(SUN_PARAMS.position);
 scene.add(sun);
 scene.add(sun.target);
 
-const sunMarker = new THREE.Mesh(
-  new THREE.SphereGeometry(SUN_PARAMS.markerRadius, 32, 16),
-  new THREE.MeshBasicMaterial({
-    color: SUN_PARAMS.color,
-  }),
-);
-sunMarker.position.copy(sun.position);
-scene.add(sunMarker);
+const sunGlow = createSunGlow(SUN_PARAMS);
+sunGlow.position.copy(sun.position);
+scene.add(sunGlow);
 
 const refractionTarget = new THREE.WebGLRenderTarget(1, 1, {
   depthBuffer: true,
@@ -220,11 +235,68 @@ function resizeRenderer() {
   syncRefractionViewport();
 }
 
+function createSunGlow({ color, glow }) {
+  const geometry = new THREE.PlaneGeometry(1, 1);
+  const material = new THREE.ShaderMaterial({
+    uniforms: {
+      uColor: { value: new THREE.Color(color) },
+      uCoreColor: { value: new THREE.Color(glow.coreColor) },
+      uSize: { value: glow.size },
+    },
+    vertexShader: `
+      uniform float uSize;
+      varying vec2 vUv;
+      void main() {
+        vUv = uv;
+        vec4 mvCenter = modelViewMatrix * vec4(0.0, 0.0, 0.0, 1.0);
+        mvCenter.xy += position.xy * uSize;
+        gl_Position = projectionMatrix * mvCenter;
+      }
+    `,
+    fragmentShader: `
+      uniform vec3 uColor;
+      uniform vec3 uCoreColor;
+      varying vec2 vUv;
+      void main() {
+        vec2 d = vUv - 0.5;
+        float r = length(d) * 2.0;
+        if (r > 1.0) discard;
+        float core = 1.0 - smoothstep(0.0, 0.14, r);
+        float disc = 1.0 - smoothstep(0.14, 0.24, r);
+        float halo = exp(-r * r * 5.5);
+        vec3 color = mix(uColor, uCoreColor, core);
+        float alpha = clamp(disc + halo * 0.55, 0.0, 1.0);
+        gl_FragColor = vec4(color, alpha);
+      }
+    `,
+    transparent: true,
+    depthWrite: false,
+  });
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.renderOrder = 0;
+  return mesh;
+}
+
+function setupRotationFab() {
+  const button = document.querySelector('#rotation-fab');
+  if (!button) return;
+  const apply = (enabled) => {
+    controls.autoRotate = enabled;
+    button.setAttribute('aria-pressed', String(enabled));
+  };
+  apply(AUTO_ROTATE_PARAMS.enabledByDefault);
+  button.addEventListener('click', () => {
+    apply(!controls.autoRotate);
+  });
+}
+
+setupRotationFab();
+
 function animate() {
   const elapsed = clock.getElapsedTime();
+  controls.update();
   updateFloorBody(floor, elapsed, WATER_PARAMS.waves);
   updateWaterBody(water, elapsed);
-  controls.update();
 
   water.visible = false;
   renderer.setRenderTarget(refractionTarget);

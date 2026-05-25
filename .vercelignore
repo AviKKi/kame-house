@@ -1,0 +1,9 @@
+node_modules
+dist
+.parcel-cache
+.vercel
+.claude
+.git
+.DS_Store
+docs
+README.md

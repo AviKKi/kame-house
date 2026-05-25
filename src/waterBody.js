@@ -369,7 +369,7 @@ function createWaterSurfaceMaterial({
       uAlpha: { value: surfaceAlpha },
       uFresnelStrength: { value: fresnelStrength },
       uFresnelPower: { value: fresnelPower },
-      uSunPosition: { value: new THREE.Vector3(...sunReflection.position) },
+      uSunPosition: { value: sunReflection.position.clone() },
       uSunReflectionColor: {
         value: new THREE.Color(sunReflection.color),
       },
@@ -418,6 +418,7 @@ function updateWaterMaterial(
   material,
   { sunReflection, slopeShading, depthTint, refraction },
 ) {
+  material.uniforms.uSunPosition.value.copy(sunReflection.position);
   material.uniforms.uSunReflectionStrength.value = sunReflection.strength;
   material.uniforms.uSunReflectionShininess.value = sunReflection.shininess;
   material.uniforms.uSunReflectionSpread.value = sunReflection.spread;
