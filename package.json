@@ -1,0 +1,17 @@
+{
+  "name": "vee-kame-house",
+  "version": "0.1.0",
+  "private": true,
+  "source": "index.html",
+  "scripts": {
+    "dev": "parcel --open",
+    "start": "parcel",
+    "build": "parcel build"
+  },
+  "dependencies": {
+    "three": "^0.165.0"
+  },
+  "devDependencies": {
+    "parcel": "^2.12.0"
+  }
+}
