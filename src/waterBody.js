@@ -125,7 +125,7 @@ function createWaterSurfaceGeometry({
   return geometry;
 }
 
-function createWaterSideGeometry({ radius, depth, angularSegments }) {
+function createWaterSideGeometry({ radius, surfaceY, depth, angularSegments }) {
   const positions = [];
   const uvs = [];
   const indices = [];
@@ -135,8 +135,8 @@ function createWaterSideGeometry({ radius, depth, angularSegments }) {
     const x = Math.cos(theta) * radius;
     const z = Math.sin(theta) * radius;
 
-    positions.push(x, -depth, z);
-    positions.push(x, 0, z);
+    positions.push(x, surfaceY - depth, z);
+    positions.push(x, surfaceY, z);
     uvs.push(segment / angularSegments, 0);
     uvs.push(segment / angularSegments, 1);
   }
@@ -225,18 +225,42 @@ function updateSideGeometry(geometry, params, time) {
   geometry.computeVertexNormals();
 }
 
-function getSurfaceHeight(x, z, { surfaceY, surface }, time) {
-  if (!surface.enabled || surface.amplitude === 0) {
-    return surfaceY;
+function getSurfaceHeight(x, z, { surfaceY, waves }, time) {
+  return surfaceY + getLevel1NoiseHeight(x, z, waves.level1, time);
+}
+
+function getLevel1NoiseHeight(x, z, level1, time) {
+  if (!level1.enabled || level1.amplitude === 0) {
+    return 0;
   }
 
-  const domainX =
-    x * surface.frequency + surface.drift[0] * surface.speed * time;
-  const domainZ =
-    z * surface.frequency + surface.drift[1] * surface.speed * time;
-  const value = fbm(domainX, domainZ, surface.octaves);
+  const phase = time * level1.speed;
+  const morphRadius = level1.morphRadius;
+  const offsetA = {
+    x: Math.cos(phase) * morphRadius,
+    z: Math.sin(phase * 0.83) * morphRadius,
+  };
+  const offsetB = {
+    x: Math.cos(phase * 0.61 + 2.4) * morphRadius,
+    z: Math.sin(phase * 0.71 + 1.7) * morphRadius,
+  };
 
-  return surfaceY + (value - 0.5) * surface.amplitude;
+  const domainX = x * level1.frequency;
+  const domainZ = z * level1.frequency;
+  const sampleA = fbm(
+    domainX + offsetA.x,
+    domainZ + offsetA.z,
+    level1.octaves,
+  );
+  const sampleB = fbm(
+    domainX + offsetB.x + 17.31,
+    domainZ + offsetB.z - 9.47,
+    level1.octaves,
+  );
+  const blend = Math.sin(phase * 0.47) * 0.5 + 0.5;
+  const value = THREE.MathUtils.lerp(sampleA, sampleB, blend);
+
+  return (value - 0.5) * level1.amplitude;
 }
 
 function fbm(x, z, octaves) {

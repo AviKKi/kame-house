@@ -16,7 +16,8 @@ Each implementation step should include:
 ## Scope Guardrails
 
 - Keep the visible scene limited to water, one solid floor/ground plane, and one sun-like light source.
-- Do not add island terrain, props, sky meshes, mountains, clouds, extra decorative meshes, or UI panels yet.
+- Do not add island terrain, props, sky meshes, mountains, clouds, or extra decorative meshes yet.
+- A small temporary tuning menu is allowed for water parameters because Step 5 needs interactive noise tuning.
 - Prefer readable, modular code over shader cleverness.
 - Add features in layers only after the previous layer looks acceptable.
 
@@ -109,19 +110,51 @@ Implementation notes:
 - A small CPU-side fBm height equation is in place as the surface driver; later steps will replace/tune the wave layers rather than changing topology.
 - Floor visibility acceptance is deferred because Step 2 is still pending.
 
-### 5. Add Level 1 Small Ripple Normal Noise
+### 5. Add Level 1 Small Ripple Noise
 
-Status: pending
+Status: done
 
-Goal: add small granular surface detail mostly through normals/color response.
+Goal: add small, fast, mostly in-place noise disturbances as the first water movement layer.
 
 Acceptance:
 
 - Detail is subtle.
 - Mesh silhouette remains calm.
 - Frequency, amplitude, and speed are constants.
+- Level 1 motion does not imply wind direction; wind-driven directional waves are still reserved for Step 7.
+- A tuning menu exposes 2-3 presets plus numeric controls.
 
-### 6. Add Level 2 Directional Large Waves
+Implementation notes:
+
+- Level 1 uses CPU-side fBM height displacement on the dynamic top mesh.
+- The side-wall rim uses the same level 1 height function so the cylindrical edge remains attached.
+- The noise animates by morphing between offset fBM samples instead of advecting in one direction.
+- Added three presets: Calm, Ripple, Active.
+- Added sliders for amplitude, frequency, speed, octaves, and morph radius.
+- Larger wind/directional wave movement remains disabled as `waves.level2`.
+- Build check passed with `npm run build`.
+- Screenshot check verified the tuning menu and level 1 surface disturbance.
+
+### 6. Add Sun Surface Reflection
+
+Status: pending
+
+Goal: make level 1 ripples visible from the default camera by reflecting the sun/source light on the water surface.
+
+Acceptance:
+
+- A bright but controlled sun glint appears on the water surface.
+- Level 1 ripple normals break up the highlight enough to reveal small disturbances.
+- Highlight color, strength, shininess, and spread are tweakable constants.
+- The effect uses the existing sun direction; do not add extra lights or decorative reflection meshes.
+- The water should still read as transparent aqua, not a metallic mirror.
+
+Implementation notes:
+
+- Add this before large directional waves because the current material makes ripples hard to evaluate from the default viewing angle.
+- Use the current dynamic surface normals first; improve finite-difference normals in Step 8 if needed.
+
+### 7. Add Level 2 Directional Large Waves
 
 Status: pending
 
@@ -130,10 +163,10 @@ Goal: add larger directional vertex waves.
 Acceptance:
 
 - Waves have visible broad movement.
-- Direction, speed, amplitude, and wavelength are constants.
+- Direction, speed, amplitude, wavelength, and wind vector are constants.
 - Motion does not look like random static shimmer.
 
-### 7. Blend Small And Large Wave Normals
+### 8. Blend Small And Large Wave Normals
 
 Status: pending
 
@@ -145,7 +178,7 @@ Acceptance:
 - Small waves affect highlights.
 - Normals do not create broken/dark artifacts.
 
-### 8. Add Edge Fade And Disc Mask
+### 9. Add Edge Fade And Disc Mask
 
 Status: pending
 
@@ -157,7 +190,7 @@ Acceptance:
 - No harsh square/canvas artifacts.
 - Inner/outer mask formulas are centralized.
 
-### 9. Add Caustics To Floor Below Water
+### 10. Add Caustics To Floor Below Water
 
 Status: pending
 
@@ -165,11 +198,11 @@ Goal: add a floor shader caustic effect, not a separate decorative mesh.
 
 Acceptance:
 
-- Caustics appear only under the water disc.
+- Caustics appear only under the water body footprint.
 - Pattern is pale cyan-white, not pure white cracks.
 - Scale, speed, threshold, and strength are constants.
 
-### 10. Add Depth-Based Water Color
+### 11. Add Depth-Based Water Color
 
 Status: pending
 
@@ -181,7 +214,7 @@ Acceptance:
 - Depth tint does not make the whole disc opaque.
 - Attenuation strength is tweakable.
 
-### 11. Add Screen-Space Refraction
+### 12. Add Screen-Space Refraction
 
 Status: pending
 
@@ -193,7 +226,7 @@ Acceptance:
 - Refraction amount is subtle.
 - Render order is explicit and documented.
 
-### 12. Final Water Pass
+### 13. Final Water Pass
 
 Status: pending
 

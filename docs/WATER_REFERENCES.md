@@ -68,7 +68,9 @@ Use for:
 
 For a full disc, `R_inner = 0`.
 
-## Small Static Ripple Layer
+## Level 1 Small Ripple Layer
+
+This is the first movement layer: small, fast disturbances that mostly stay in place. It should not read as wind-driven swell.
 
 ```text
 eta_small(p) = A_s * fbm(p * f_s + o_s)
@@ -83,7 +85,38 @@ f_s = 12 to 30
 
 Use mostly for normal perturbation, not major vertex displacement.
 
-## Large Directional Waves
+Current build variant:
+
+```text
+eta_1(p, t) =
+  A_1 * (
+    mix(
+      fbm(p * f_1 + q_a(t)),
+      fbm(p * f_1 + q_b(t) + seed),
+      0.5 + 0.5 sin(k t)
+    )
+    - 0.5
+  )
+```
+
+where:
+
+```text
+q_a(t) = morphRadius * [cos(speed * t), sin(0.83 * speed * t)]
+q_b(t) = morphRadius * [cos(0.61 * speed * t + phaseA), sin(0.71 * speed * t + phaseB)]
+```
+
+This gives local surface agitation without a single directional drift. Keep this layer small and fast.
+
+Current tuning presets:
+
+```text
+Calm:   A_1 = 0.018, f_1 = 5.2,  speed = 1.2, octaves = 2
+Ripple: A_1 = 0.036, f_1 = 8.4,  speed = 2.2, octaves = 3
+Active: A_1 = 0.056, f_1 = 11.2, speed = 3.3, octaves = 4
+```
+
+## Level 2 Large Directional Waves
 
 Single directional sine wave:
 
@@ -115,13 +148,13 @@ v = c * d
 ## Final Water Height
 
 ```text
-h_water(p, t) = h_0 + eta_dir(p, t) + eta_small(p)
+h_water(p, t) = h_0 + eta_1(p, t) + eta_2(p, t)
 ```
 
 Practical split:
 
-- Large waves: vertex displacement.
-- Small waves: shader normal perturbation.
+- Level 1 small waves: small amplitude, high frequency, fast local disturbance.
+- Level 2 large waves: larger amplitude, lower frequency, wind-directional movement.
 - Foam/shore ripples: separate later mask.
 
 ## Water Normals
@@ -152,6 +185,48 @@ Water starter value:
 ```text
 F_0 ~= 0.02
 ```
+
+## Sun Surface Reflection
+
+Use this before adding level 2 waves so level 1 ripples are visually readable from the default camera angle.
+
+Inputs:
+
+```text
+N = water surface normal
+V = view direction from water point to camera
+L = direction from water point to sun/source light
+```
+
+Reflection-vector specular:
+
+```text
+R = reflect(-L, N)
+S_sun = max(0, dot(R, V))^shininess
+```
+
+Blinn half-vector alternative:
+
+```text
+H = normalize(L + V)
+S_sun = max(0, dot(N, H))^shininess
+```
+
+Final highlight:
+
+```text
+C_specular = C_sun * S_sun * specularStrength
+```
+
+Use a controlled highlight:
+
+```text
+shininess = 80 to 220
+specularStrength = 0.25 to 1.2
+C_sun = pale warm white, not pure white
+```
+
+The important requirement is that level 1 normals break up the reflected highlight. If the highlight remains smooth, improve normal calculation before moving to level 2 waves.
 
 ## Depth-Based Transparency And Color
 
@@ -317,7 +392,7 @@ Target order:
 
 1. Solid floor.
 2. Caustics as part of floor shader.
-3. Water disc/ring.
+3. Water body top and side wall.
 
 Water settings:
 

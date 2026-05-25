@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { createWaterBody, updateWaterBody } from './waterBody.js';
+import { createWaterTuningMenu } from './waterTuningMenu.js';
 import './styles.css';
 
 const SCENE_PARAMS = {
@@ -30,6 +31,39 @@ const SUN_PARAMS = {
   markerRadius: 0.35,
 };
 
+const LEVEL_1_NOISE_PRESETS = {
+  calm: {
+    label: 'Calm',
+    values: {
+      amplitude: 0.018,
+      frequency: 5.2,
+      speed: 1.2,
+      octaves: 2,
+      morphRadius: 0.45,
+    },
+  },
+  ripple: {
+    label: 'Ripple',
+    values: {
+      amplitude: 0.036,
+      frequency: 8.4,
+      speed: 2.2,
+      octaves: 3,
+      morphRadius: 0.85,
+    },
+  },
+  active: {
+    label: 'Active',
+    values: {
+      amplitude: 0.056,
+      frequency: 11.2,
+      speed: 3.3,
+      octaves: 4,
+      morphRadius: 1.15,
+    },
+  },
+};
+
 const WATER_PARAMS = {
   radius: 3.8,
   surfaceY: 0,
@@ -43,13 +77,14 @@ const WATER_PARAMS = {
   sideAlpha: 0.44,
   fresnelStrength: 0.82,
   fresnelPower: 4.8,
-  surface: {
-    enabled: true,
-    amplitude: 0.08,
-    frequency: 0.9,
-    speed: 0.22,
-    drift: [0.8, -0.45],
-    octaves: 3,
+  waves: {
+    level1: {
+      enabled: true,
+      ...LEVEL_1_NOISE_PRESETS.ripple.values,
+    },
+    level2: {
+      enabled: false,
+    },
   },
 };
 
@@ -98,6 +133,11 @@ scene.add(sunMarker);
 
 const water = createWaterBody(WATER_PARAMS);
 scene.add(water);
+createWaterTuningMenu({
+  params: WATER_PARAMS,
+  presets: LEVEL_1_NOISE_PRESETS,
+  initialPreset: 'ripple',
+});
 
 const clock = new THREE.Clock();
 
