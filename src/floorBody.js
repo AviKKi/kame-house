@@ -15,7 +15,7 @@ const FLOOR_FRAGMENT_SHADER = `
   uniform vec3 uCausticColor;
   uniform float uTime;
   uniform float uCausticScale;
-  uniform float uCausticSpeed;
+  uniform vec2 uCausticFlow;
   uniform float uCausticThreshold;
   uniform float uCausticWidth;
   uniform float uCausticStrength;
@@ -79,9 +79,11 @@ const FLOOR_FRAGMENT_SHADER = `
     );
 
     vec2 uv = p * uCausticScale;
-    float t = uTime * uCausticSpeed;
-    float n1 = 1.0 - abs(snoise(vec2(uv.x + t, uv.y - t * 0.62)));
-    float n2 = 1.0 - abs(snoise(vec2(uv.y - t * 0.81, uv.x + t * 0.43)));
+    vec2 flow = uCausticFlow * uTime;
+    float n1 = 1.0 - abs(snoise(uv - flow));
+    float n2 = 1.0 - abs(
+      snoise(vec2(uv.y, uv.x) - vec2(flow.y, flow.x) * 0.8)
+    );
     float causticRaw = smoothstep(
       uCausticThreshold,
       uCausticThreshold + uCausticWidth,
@@ -106,13 +108,19 @@ export function createFloorBody(params) {
   return mesh;
 }
 
-export function updateFloorBody(mesh, time) {
+export function updateFloorBody(mesh, time, waveParams) {
   const { material, params } = mesh.userData.floor;
   const { caustics } = params;
+  const level2 = waveParams.level2;
+  const radians = (level2.directionDegrees * Math.PI) / 180;
+  const flowSpeed = level2.speed * caustics.flowScale;
 
   material.uniforms.uTime.value = time;
   material.uniforms.uCausticScale.value = caustics.scale;
-  material.uniforms.uCausticSpeed.value = caustics.speed;
+  material.uniforms.uCausticFlow.value.set(
+    Math.cos(radians) * flowSpeed,
+    Math.sin(radians) * flowSpeed,
+  );
   material.uniforms.uCausticThreshold.value = caustics.threshold;
   material.uniforms.uCausticWidth.value = caustics.width;
   material.uniforms.uCausticStrength.value = caustics.strength;
@@ -133,7 +141,7 @@ function createFloorMaterial(params) {
       uCausticColor: { value: new THREE.Color(params.caustics.color) },
       uTime: { value: 0 },
       uCausticScale: { value: params.caustics.scale },
-      uCausticSpeed: { value: params.caustics.speed },
+      uCausticFlow: { value: new THREE.Vector2() },
       uCausticThreshold: { value: params.caustics.threshold },
       uCausticWidth: { value: params.caustics.width },
       uCausticStrength: { value: params.caustics.strength },

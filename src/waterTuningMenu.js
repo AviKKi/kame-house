@@ -150,6 +150,14 @@ const REFRACTION_CONTROLS = [
     step: 0.01,
     format: (value) => value.toFixed(2),
   },
+  {
+    key: 'dispersion',
+    label: 'Dispersion',
+    min: 0,
+    max: 1,
+    step: 0.01,
+    format: (value) => value.toFixed(2),
+  },
 ];
 
 const CAUSTIC_CONTROLS = [
@@ -162,11 +170,11 @@ const CAUSTIC_CONTROLS = [
     format: (value) => value.toFixed(2),
   },
   {
-    key: 'speed',
-    label: 'Speed',
+    key: 'flowScale',
+    label: 'Flow Scale',
     min: 0,
-    max: 1.2,
-    step: 0.01,
+    max: 2,
+    step: 0.02,
     format: (value) => value.toFixed(2),
   },
   {

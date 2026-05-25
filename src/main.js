@@ -103,6 +103,7 @@ const WATER_PARAMS = {
   refraction: {
     strength: 0.04,
     mix: 0.55,
+    dispersion: 0,
     texture: null,
     viewportSize: new THREE.Vector2(),
   },
@@ -133,8 +134,8 @@ const FLOOR_PARAMS = {
   maskEdgeFade: 0.55,
   caustics: {
     color: 0xf3ffff,
-    scale: 1.4,
-    speed: 0.22,
+    scale: 0.7,
+    flowScale: 0.7,
     threshold: 1.22,
     width: 0.8,
     strength: 1.05,
@@ -221,7 +222,7 @@ function resizeRenderer() {
 
 function animate() {
   const elapsed = clock.getElapsedTime();
-  updateFloorBody(floor, elapsed);
+  updateFloorBody(floor, elapsed, WATER_PARAMS.waves);
   updateWaterBody(water, elapsed);
   controls.update();
 

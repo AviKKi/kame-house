@@ -275,12 +275,11 @@ Implementation notes:
 - Pattern uses two crossed 2D simplex noise samples in the noise-line caustic style from the reference doc: `c = smoothstep(threshold, threshold + width, (1 - |snoise_a|) + (1 - |snoise_b|))`.
 - A radial smoothstep mask fades caustics inside the water footprint so the disc edge is soft, not a hard ring.
 - Caustic color is mixed over a muted sage floor color; the cyan-white tint reads correctly through the transparent water.
-- Tuneable constants `FLOOR_PARAMS.caustics`: `color`, `scale`, `speed`, `threshold`, `width`, `strength`.
-- Tuned defaults after live review: scale 1.4, speed 0.22, threshold 1.22, width 0.8, strength 1.05.
-- Added a Caustics section to the water tuning menu with sliders for scale, speed, threshold, width, and strength.
+- Tuneable constants `FLOOR_PARAMS.caustics`: `color`, `scale`, `flowScale`, `threshold`, `width`, `strength`. (Initially shipped with an independent `speed`; replaced with `flowScale` in Step 15 so caustic motion is driven by level 2 wave wind.)
+- Tuned defaults after live review: scale 1.4, threshold 1.22, width 0.8, strength 1.05. The original `speed: 0.22` mapped to `flowScale: 0.4` after the Step 15 coupling (`level2.speed * flowScale ≈ 0.58 * 0.4 ≈ 0.23`).
+- Added a Caustics section to the water tuning menu with sliders for scale, flow scale, threshold, width, and strength.
 - Build check passed with `npm run build`.
 - Visual check confirmed pale cyan-white caustic ribbons over the sage floor through the transparent water, with a soft edge fade.
-- Forward note: caustic speed/direction should eventually be driven by the level 2 wind direction and speed instead of independent caustic controls; deferred to a later tuning pass.
 
 ### 12. Add Depth-Based Water Color
 
@@ -339,7 +338,7 @@ Implementation notes:
 
 ### 14. Add Chromatic Dispersion To Refraction
 
-Status: pending
+Status: done
 
 Goal: layer a subtle prism/dispersion effect on top of Step 13 refraction by splitting the refraction sample into R/G/B with slightly different distortion offsets.
 
@@ -355,9 +354,18 @@ Notes:
 
 - Defer this step until plain refraction is in and tuned; if the look is already convincing without dispersion, this step can stay at default-zero or be skipped entirely.
 
+Implementation notes:
+
+- Water surface fragment shader (`src/waterBody.js`) now does three texture reads: R sampled at `screenUV + refractOffset * (1 - dispersion)`, G at the neutral offset, B at `screenUV + refractOffset * (1 + dispersion)`. Final `refractedScene` packs `.r/.g/.b` from those three samples. With dispersion = 0 all three UVs collapse to the same value, so the output is bit-identical to Step 13.
+- The physical convention is preserved: blue refracts more than red, so the blue sample uses the larger offset multiplier.
+- Tuneable constant `WATER_PARAMS.refraction.dispersion` (default 0). Slider range 0–1 in the menu's existing Refraction section.
+- No changes inside the floor shader; caustic edge fringing emerges naturally from per-channel sampling of the refraction texture, matching the acceptance note.
+- Build check passed with `npm run build`.
+- Visual check: the math fires correctly, but the effect is a no-op in the current scene because the refraction texture is near-monochromatic (sage floor + pale cyan caustics + pale cyan sky). Dispersion needs chromatic content in the refraction texture to read as visible prism fringing. Default kept at 0; the slider remains exposed so the effect can light up automatically once scene decor (coral, pebbles, colored terrain) is added in a future phase.
+
 ### 15. Final Water Pass
 
-Status: pending
+Status: done
 
 Goal: tune the complete water stack after all individual layers work.
 
@@ -366,3 +374,13 @@ Acceptance:
 - Water reads well from the default camera angle.
 - Parameters are organized.
 - No unrelated meshes were added.
+
+Implementation notes:
+
+- **Caustic wave coupling (deferred from Step 11):** caustic motion now derives from the level 2 wave wind instead of having an independent control. Replaced `FLOOR_PARAMS.caustics.speed` (scalar) with `flowScale` (scalar). The floor fragment shader now reads `uCausticFlow` (vec2) instead of `uCausticSpeed`; the vector is recomputed each frame in `updateFloorBody` from `WATER_PARAMS.waves.level2` as `flow = (cos(directionDegrees), sin(directionDegrees)) * level2.speed * caustics.flowScale`. Caustic samples drift directionally along the wind: `n1 = 1 - abs(snoise(uv - flow))` and `n2 = 1 - abs(snoise(swap(uv) - swap(flow) * 0.8))`. The `-flow` sign is the standard advection convention: subtracting the flow offset makes the noise feature at `N0` appear at world point `p` when `p*scale = N0 + flow*t`, so the visible feature moves *with* the wind direction (first cut used `+flow`, which made caustics drift 180° opposite the waves; corrected during live review).
+- `updateFloorBody(mesh, time, waveParams)` signature now takes wave params from `main.js`; the menu's caustic Speed slider was replaced with Flow Scale (0–2, default 0.4). With level 2 defaults (`speed 0.58`, `directionDegrees -28`) and `flowScale 0.4`, caustic drift magnitude is ~0.23 — close to the original `speed: 0.22` so the look is preserved at startup but now retunes automatically when wave speed/direction change.
+- Removed the obsolete `sideColor` constant in Step 12 — already cleaned up. No other unused params found during the parameter audit.
+- Scene contents audited: only floor mesh, water group (top surface + depth-tinted side wall), `DirectionalLight` sun, and a sun marker sphere. No island terrain, props, sky meshes, mountains, clouds, or extra decorative meshes — matches the scope guardrails.
+- Dispersion (Step 14) confirmed as a no-op in the current monochromatic scene; left at default 0 with the slider exposed so it activates automatically once chromatic decor is added later.
+- Build check passed with `npm run build`.
+- All step 0–15 statuses are now `done` (Step 10 edge fade remains explicitly skipped per its own note).

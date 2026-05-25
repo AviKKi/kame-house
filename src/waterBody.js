@@ -132,6 +132,7 @@ const WATER_SURFACE_FRAGMENT_SHADER = `
   uniform vec2 uViewportSize;
   uniform float uRefractionStrength;
   uniform float uRefractionMix;
+  uniform float uRefractionDispersion;
 
   varying vec3 vWorldPosition;
   varying vec3 vWorldNormal;
@@ -142,8 +143,22 @@ const WATER_SURFACE_FRAGMENT_SHADER = `
 
     vec2 screenUV = gl_FragCoord.xy / uViewportSize;
     vec2 refractOffset = normal.xz * uRefractionStrength;
-    vec2 refractUV = clamp(screenUV + refractOffset, vec2(0.0), vec2(1.0));
-    vec3 refractedScene = texture2D(uSceneTexture, refractUV).rgb;
+    vec2 redUV = clamp(
+      screenUV + refractOffset * (1.0 - uRefractionDispersion),
+      vec2(0.0),
+      vec2(1.0)
+    );
+    vec2 greenUV = clamp(screenUV + refractOffset, vec2(0.0), vec2(1.0));
+    vec2 blueUV = clamp(
+      screenUV + refractOffset * (1.0 + uRefractionDispersion),
+      vec2(0.0),
+      vec2(1.0)
+    );
+    vec3 refractedScene = vec3(
+      texture2D(uSceneTexture, redUV).r,
+      texture2D(uSceneTexture, greenUV).g,
+      texture2D(uSceneTexture, blueUV).b
+    );
     vec3 shallowTinted = mix(uShallowColor, refractedScene, uRefractionMix);
 
     float depth = max(0.0, vWorldPosition.y - uFloorY);
@@ -350,6 +365,7 @@ function createWaterSurfaceMaterial({
       uViewportSize: { value: refraction.viewportSize.clone() },
       uRefractionStrength: { value: refraction.strength },
       uRefractionMix: { value: refraction.mix },
+      uRefractionDispersion: { value: refraction.dispersion },
       uAlpha: { value: surfaceAlpha },
       uFresnelStrength: { value: fresnelStrength },
       uFresnelPower: { value: fresnelPower },
@@ -411,6 +427,7 @@ function updateWaterMaterial(
   material.uniforms.uDepthAttenuation.value = depthTint.attenuation;
   material.uniforms.uRefractionStrength.value = refraction.strength;
   material.uniforms.uRefractionMix.value = refraction.mix;
+  material.uniforms.uRefractionDispersion.value = refraction.dispersion;
   material.uniforms.uViewportSize.value.copy(refraction.viewportSize);
 }
 
