@@ -294,21 +294,182 @@ const LEVEL_2_SWELL_GLSL = `
   }
 `;
 
-export function createIslandBody(params) {
-  const geometry = new THREE.SphereGeometry(
-    params.radius,
-    params.widthSegments,
-    params.heightSegments,
-    0,
-    Math.PI * 2,
-    0,
-    params.thetaLength,
+function createIslandGeometry(params) {
+  const angularSegments = params.angularSegments;
+  const profiles = createIslandProfiles(params);
+  const positions = [];
+  const colors = [];
+  const indices = [];
+
+  profiles.forEach((profile) => {
+    for (let segment = 0; segment < angularSegments; segment += 1) {
+      const theta = (segment / angularSegments) * Math.PI * 2;
+      const edgeScale = getIslandEdgeScale(theta, params);
+      const radius = params.radius * profile.radiusScale * edgeScale;
+      const x = Math.cos(theta) * radius;
+      const z = Math.sin(theta) * radius;
+      const y = profile.y + getIslandTopOffset(x, z, profile, params);
+      const color = getIslandVertexColor(profile, params);
+
+      positions.push(x, y, z);
+      colors.push(color.r, color.g, color.b);
+    }
+  });
+
+  for (let ring = 0; ring < profiles.length - 1; ring += 1) {
+    const currentRingStart = ring * angularSegments;
+    const nextRingStart = (ring + 1) * angularSegments;
+
+    for (let segment = 0; segment < angularSegments; segment += 1) {
+      const nextSegment = (segment + 1) % angularSegments;
+      const a = currentRingStart + segment;
+      const b = nextRingStart + segment;
+      const c = currentRingStart + nextSegment;
+      const d = nextRingStart + nextSegment;
+
+      indices.push(a, c, b);
+      indices.push(c, d, b);
+    }
+  }
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute(
+    'position',
+    new THREE.Float32BufferAttribute(positions, 3),
   );
+  geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+  geometry.setIndex(indices);
+  geometry.computeVertexNormals();
+
+  return geometry;
+}
+
+function createIslandProfiles({
+  baseY,
+  baseRadiusScale,
+  filletSegments,
+  plateauRadiusScale,
+  shoreY,
+  topY,
+}) {
+  const profiles = [
+    createIslandProfile(0, topY, 0, 1),
+    createIslandProfile(plateauRadiusScale * 0.32, topY, 0, 1),
+    createIslandProfile(plateauRadiusScale * 0.68, topY, 0, 1),
+    createIslandProfile(plateauRadiusScale, topY, 0.08, 0.85),
+  ];
+
+  for (let index = 1; index <= filletSegments; index += 1) {
+    const t = index / filletSegments;
+    const quarter = t * Math.PI * 0.5;
+    const radiusScale =
+      plateauRadiusScale + (1 - plateauRadiusScale) * Math.sin(quarter);
+    const y = topY + (shoreY - topY) * (1 - Math.cos(quarter));
+    const shoreMix = smoothstep(0.12, 1, t);
+    const topOffsetStrength = (1 - t) * 0.35;
+
+    profiles.push(
+      createIslandProfile(radiusScale, y, shoreMix, topOffsetStrength),
+    );
+  }
+
+  profiles.push(createIslandProfile(1, shoreY, 1, 0));
+  profiles.push(
+    createIslandProfile(
+      1,
+      THREE.MathUtils.lerp(shoreY, baseY, 0.46),
+      1,
+      0,
+      0.42,
+    ),
+  );
+  profiles.push(createIslandProfile(baseRadiusScale, baseY, 1, 0, 1));
+  profiles.push(createIslandProfile(0, baseY, 1, 0, 1));
+
+  return profiles;
+}
+
+function createIslandProfile(
+  radiusScale,
+  y,
+  shoreMix,
+  topOffsetStrength,
+  underwaterMix = 0,
+) {
+  return {
+    radiusScale,
+    y,
+    shoreMix,
+    topOffsetStrength,
+    underwaterMix,
+  };
+}
+
+function getIslandEdgeScale(theta, { edgeIrregularity }) {
+  const contour =
+    Math.sin(theta * 2 + 0.35) * 0.24 +
+    Math.sin(theta * 3 - 1.15) * 0.36 +
+    Math.sin(theta * 5 + 2.1) * 0.25 +
+    Math.sin(theta * 9 - 0.7) * 0.15;
+
+  return 1 + contour * edgeIrregularity;
+}
+
+function getIslandTopOffset(x, z, profile, params) {
+  const {
+    crownHeight,
+    plateauRadiusScale,
+    topNoise,
+    topNoiseFrequency,
+  } = params;
+
+  if (profile.topOffsetStrength === 0) {
+    return 0;
+  }
+
+  const topFade = 1 - smoothstep(
+    plateauRadiusScale * 0.72,
+    1,
+    profile.radiusScale,
+  );
+  const crown = crownHeight * (
+    1 - smoothstep(0.1, plateauRadiusScale, profile.radiusScale)
+  );
+  const rough =
+    (
+      Math.sin(x * topNoiseFrequency + z * topNoiseFrequency * 0.55 + 0.4) *
+        0.58 +
+      Math.sin(x * topNoiseFrequency * -0.74 + z * topNoiseFrequency * 1.28 - 1.1) *
+        0.42
+    ) *
+    topNoise;
+
+  return (crown + rough) * topFade * profile.topOffsetStrength;
+}
+
+function getIslandVertexColor(profile, params) {
+  const topColor = new THREE.Color(params.topColor);
+  const shoreColor = new THREE.Color(params.shoreColor);
+  const underwaterColor = new THREE.Color(params.underwaterColor);
+
+  return topColor
+    .lerp(shoreColor, profile.shoreMix)
+    .lerp(underwaterColor, profile.underwaterMix);
+}
+
+function smoothstep(edge0, edge1, value) {
+  const x = THREE.MathUtils.clamp((value - edge0) / (edge1 - edge0), 0, 1);
+  return x * x * (3 - 2 * x);
+}
+
+export function createIslandBody(params) {
+  const geometry = createIslandGeometry(params);
 
   const material = new THREE.MeshStandardMaterial({
-    color: params.color,
+    color: 0xffffff,
     roughness: params.roughness,
     metalness: 0,
+    vertexColors: true,
   });
 
   const uniforms = {
@@ -411,8 +572,6 @@ export function createIslandBody(params) {
   };
 
   const mesh = new THREE.Mesh(geometry, material);
-  const capEdgeOffset = params.radius * Math.cos(params.thetaLength);
-  mesh.position.y = params.baseY - capEdgeOffset;
   mesh.userData.island = { uniforms, params };
   return mesh;
 }

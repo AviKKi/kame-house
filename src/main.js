@@ -162,13 +162,22 @@ const FLOOR_PARAMS = {
 };
 
 const ISLAND_PARAMS = {
-  color: 0xeacd91,
-  radius: 2.5,
-  thetaLength: Math.PI / 3,
-  widthSegments: 96,
-  heightSegments: 32,
+  topColor: 0x86d642,
+  shoreColor: 0xeacd91,
+  underwaterColor: 0xa9825b,
+  radius: 2.45,
+  angularSegments: 128,
+  plateauRadiusScale: 0.56,
+  baseRadiusScale: 0.94,
+  filletSegments: 7,
   baseY: WATER_PARAMS.surfaceY - WATER_PARAMS.depth,
+  shoreY: WATER_PARAMS.surfaceY - 0.015,
+  topY: WATER_PARAMS.surfaceY + 0.22,
   waterSurfaceY: WATER_PARAMS.surfaceY,
+  edgeIrregularity: 0.1,
+  crownHeight: 0.016,
+  topNoise: 0.014,
+  topNoiseFrequency: 2.2,
   roughness: 0.95,
   caustics: {
     color: FLOOR_PARAMS.caustics.color,
