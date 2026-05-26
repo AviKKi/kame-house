@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { createWaterBody, updateWaterBody } from './waterBody.js';
 import { createFloorBody, updateFloorBody } from './floorBody.js';
+import { createIslandBody, updateIslandBody } from './islandBody.js';
 import { createWaterTuningMenu } from './waterTuningMenu.js';
 import './styles.css';
 
@@ -167,7 +168,20 @@ const ISLAND_PARAMS = {
   widthSegments: 96,
   heightSegments: 32,
   baseY: WATER_PARAMS.surfaceY - WATER_PARAMS.depth,
+  waterSurfaceY: WATER_PARAMS.surfaceY,
   roughness: 0.95,
+  caustics: {
+    color: FLOOR_PARAMS.caustics.color,
+    scale: FLOOR_PARAMS.caustics.scale,
+    flowScale: FLOOR_PARAMS.caustics.flowScale,
+    threshold: FLOOR_PARAMS.caustics.threshold,
+    width: FLOOR_PARAMS.caustics.width,
+    strength: 1.1,
+    normalFade: 0.35,
+    depthFalloff: 4.5,
+    // @todo: Tighten the island caustic mask if wave-edge overshoot becomes visible at stronger swell settings.
+    surfaceFade: 0.035,
+  },
 };
 
 const AMBIENT_LIGHT_PARAMS = {
@@ -240,7 +254,7 @@ syncRefractionViewport();
 const floor = createFloorBody(FLOOR_PARAMS);
 scene.add(floor);
 
-const island = createIsland(ISLAND_PARAMS);
+const island = createIslandBody(ISLAND_PARAMS);
 scene.add(island);
 
 const water = createWaterBody(WATER_PARAMS);
@@ -303,27 +317,6 @@ function createSunGlow({ color, glow }) {
   return mesh;
 }
 
-function createIsland(params) {
-  const geometry = new THREE.SphereGeometry(
-    params.radius,
-    params.widthSegments,
-    params.heightSegments,
-    0,
-    Math.PI * 2,
-    0,
-    params.thetaLength,
-  );
-  const material = new THREE.MeshStandardMaterial({
-    color: params.color,
-    roughness: params.roughness,
-    metalness: 0,
-  });
-  const mesh = new THREE.Mesh(geometry, material);
-  const capEdgeOffset = params.radius * Math.cos(params.thetaLength);
-  mesh.position.y = params.baseY - capEdgeOffset;
-  return mesh;
-}
-
 function setupRotationFab() {
   const button = document.querySelector('#rotation-fab');
   if (!button) return;
@@ -343,6 +336,7 @@ function animate() {
   const elapsed = clock.getElapsedTime();
   controls.update();
   updateFloorBody(floor, elapsed, WATER_PARAMS.waves);
+  updateIslandBody(island, elapsed, WATER_PARAMS.waves);
   updateWaterBody(water, elapsed);
 
   water.visible = false;
