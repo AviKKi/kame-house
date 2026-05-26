@@ -160,6 +160,22 @@ const FLOOR_PARAMS = {
   },
 };
 
+const ISLAND_PARAMS = {
+  color: 0xeacd91,
+  radius: 2.5,
+  thetaLength: Math.PI / 3,
+  widthSegments: 96,
+  heightSegments: 32,
+  baseY: WATER_PARAMS.surfaceY - WATER_PARAMS.depth,
+  roughness: 0.95,
+};
+
+const AMBIENT_LIGHT_PARAMS = {
+  skyColor: 0xe8f6f7,
+  groundColor: 0x8a7044,
+  intensity: 0.55,
+};
+
 const canvas = document.querySelector('#scene');
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(SCENE_PARAMS.backgroundColor);
@@ -196,6 +212,13 @@ sun.position.copy(SUN_PARAMS.position);
 scene.add(sun);
 scene.add(sun.target);
 
+const ambientLight = new THREE.HemisphereLight(
+  AMBIENT_LIGHT_PARAMS.skyColor,
+  AMBIENT_LIGHT_PARAMS.groundColor,
+  AMBIENT_LIGHT_PARAMS.intensity,
+);
+scene.add(ambientLight);
+
 const sunGlow = createSunGlow(SUN_PARAMS);
 sunGlow.position.copy(sun.position);
 scene.add(sunGlow);
@@ -216,6 +239,9 @@ syncRefractionViewport();
 
 const floor = createFloorBody(FLOOR_PARAMS);
 scene.add(floor);
+
+const island = createIsland(ISLAND_PARAMS);
+scene.add(island);
 
 const water = createWaterBody(WATER_PARAMS);
 scene.add(water);
@@ -274,6 +300,27 @@ function createSunGlow({ color, glow }) {
   });
   const mesh = new THREE.Mesh(geometry, material);
   mesh.renderOrder = 0;
+  return mesh;
+}
+
+function createIsland(params) {
+  const geometry = new THREE.SphereGeometry(
+    params.radius,
+    params.widthSegments,
+    params.heightSegments,
+    0,
+    Math.PI * 2,
+    0,
+    params.thetaLength,
+  );
+  const material = new THREE.MeshStandardMaterial({
+    color: params.color,
+    roughness: params.roughness,
+    metalness: 0,
+  });
+  const mesh = new THREE.Mesh(geometry, material);
+  const capEdgeOffset = params.radius * Math.cos(params.thetaLength);
+  mesh.position.y = params.baseY - capEdgeOffset;
   return mesh;
 }
 
